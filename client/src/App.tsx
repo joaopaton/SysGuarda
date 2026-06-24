@@ -232,6 +232,13 @@ export default function App({
     }
   };
 
+  const importarTurmasCsv = async (file: File) => {
+    const texto = await file.text();
+    const r = await api.importarTurmas(texto);
+    carregarEfetivo();
+    return r;
+  };
+
   const adicionarMonitor = async (
     num: string,
     nome: string,
@@ -345,6 +352,7 @@ export default function App({
             onToggle={alternarDisponibilidade}
             onDefinirTurma={definirTurma}
             onAtribuirEmMassa={atribuirTurmaEmMassa}
+            onImportarTurmas={importarTurmasCsv}
             isSuper={isSuper}
             turmas={turmas}
             user={user}
@@ -718,6 +726,7 @@ function EfetivoTab({
   onToggle,
   onDefinirTurma,
   onAtribuirEmMassa,
+  onImportarTurmas,
   isSuper,
   turmas,
   user,
@@ -734,10 +743,29 @@ function EfetivoTab({
   onToggle: (id: string, available: boolean) => void;
   onDefinirTurma: (id: string, turmaId: string | null) => void;
   onAtribuirEmMassa: (ids: string[], turmaId: string | null) => void;
+  onImportarTurmas: (file: File) => Promise<{
+    atualizadas: number;
+    naoEncontrados: string[];
+    turmaInvalida: string[];
+  }>;
   isSuper: boolean;
   turmas: Turma[];
   user: MeUser | null;
 }) {
+  const [impMsg, setImpMsg] = useState<string | null>(null);
+  const importarTurmas = async (file: File) => {
+    setImpMsg(null);
+    try {
+      const r = await onImportarTurmas(file);
+      const extra =
+        r.naoEncontrados.length + r.turmaInvalida.length > 0
+          ? ` · ${r.naoEncontrados.length} não encontrado(s), ${r.turmaInvalida.length} turma inválida`
+          : "";
+      setImpMsg(`${r.atualizadas} pessoa(s) atribuída(s)${extra}.`);
+    } catch (e) {
+      setImpMsg(`Erro: ${(e as Error).message}`);
+    }
+  };
   const [novaTurma, setNovaTurma] = useState("");
   const [monNum, setMonNum] = useState("");
   const [monNome, setMonNome] = useState("");
@@ -812,6 +840,27 @@ function EfetivoTab({
           >
             <Check size={13} /> ATRIBUIR
           </button>
+          <span className="w-full border-t border-linha/60 my-1" />
+          <span className="text-areia">
+            OU IMPORTAR CSV{" "}
+            <span className="text-amareloMil">num ; nome ; turma</span>:
+          </span>
+          <label className="border border-verdeBrilho text-verdeBrilho px-2 py-1 cursor-pointer inline-flex items-center gap-1 hover:bg-verdeMil hover:text-caquiClaro">
+            <Upload size={12} /> IMPORTAR TURMAS
+            <input
+              type="file"
+              accept=".csv,.txt,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importarTurmas(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {impMsg && (
+            <span className="w-full text-amareloMil mt-1">✓ {impMsg}</span>
+          )}
         </div>
       )}
 

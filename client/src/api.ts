@@ -88,6 +88,12 @@ export const api = {
       body: JSON.stringify({ ids, turmaId }),
     }),
 
+  importarTurmas: (csv: string) =>
+    req<{ atualizadas: number; naoEncontrados: string[]; turmaInvalida: string[] }>(
+      "/api/people/importar-turmas",
+      { method: "POST", body: JSON.stringify({ csv }) }
+    ),
+
   setAvailable: (id: string, available: boolean) =>
     req<Person>(`/api/people/${id}`, {
       method: "PATCH",

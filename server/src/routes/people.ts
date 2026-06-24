@@ -60,6 +60,85 @@ peopleRouter.post("/atribuir-turma", requireSuperadmin, async (req, res) => {
   res.json({ atualizadas: r.count });
 });
 
+// POST /api/people/importar-turmas  { csv }  -> atribui turma em lote por CSV.
+// Linhas tolerantes: "num;nome;turma" ou "nome;turma". Turma por código (T1),
+// apelido (Caveira) ou número (1). Casa a pessoa por (num+nome) ou só por nome.
+peopleRouter.post("/importar-turmas", requireSuperadmin, async (req, res) => {
+  const csv = str(req.body?.csv, 200000).replace(/^﻿/, "");
+  if (!csv) return res.status(400).json({ error: "CSV vazio." });
+
+  const turmas = await prisma.turma.findMany({ where: { active: true } });
+  const turmaPorChave = new Map<string, string>();
+  for (const t of turmas) {
+    turmaPorChave.set(t.codigo.toLowerCase(), t.id);
+    turmaPorChave.set(t.apelido.toLowerCase(), t.id);
+    turmaPorChave.set(String(t.ordem), t.id);
+  }
+  const acharTurma = (raw: string): string | undefined => {
+    const v = raw.trim().toLowerCase();
+    if (!v) return undefined;
+    if (turmaPorChave.has(v)) return turmaPorChave.get(v);
+    const n = v.replace(/[^0-9]/g, "");
+    return n ? turmaPorChave.get(n) : undefined;
+  };
+
+  const people = await prisma.person.findMany({ where: { active: true } });
+  const porChave = new Map<string, string>();
+  const porNome = new Map<string, string[]>();
+  for (const p of people) {
+    porChave.set((p.num + p.nome).toUpperCase(), p.id);
+    const k = p.nome.toUpperCase();
+    (porNome.get(k) ?? porNome.set(k, []).get(k)!).push(p.id);
+  }
+
+  const byTurma = new Map<string, string[]>();
+  const naoEncontrados: string[] = [];
+  const turmaInvalida: string[] = [];
+
+  const linhas = csv.split(/\r?\n/);
+  linhas.forEach((linha, i) => {
+    const cols = linha.split(/[;,\t]/).map((s) => s.trim().replace(/^"|"$/g, ""));
+    if (cols.every((c) => !c)) return;
+    // pula cabeçalho
+    if (i === 0 && /turma/i.test(linha) && !/^\d{2,4}\b/.test(cols[0])) return;
+
+    let num = "";
+    let nome = "";
+    let turmaRaw = "";
+    if (cols.length >= 3) [num, nome, turmaRaw] = cols;
+    else if (cols.length === 2) [nome, turmaRaw] = cols;
+    else return;
+    nome = nome.toUpperCase();
+    if (!nome || !turmaRaw) return;
+
+    const turmaId = acharTurma(turmaRaw);
+    if (!turmaId) {
+      turmaInvalida.push(`${nome} (${turmaRaw})`);
+      return;
+    }
+    let pid = num ? porChave.get((num + nome).toUpperCase()) : undefined;
+    if (!pid) {
+      const hits = porNome.get(nome);
+      if (hits && hits.length === 1) pid = hits[0];
+    }
+    if (!pid) {
+      naoEncontrados.push(num ? `${num} ${nome}` : nome);
+      return;
+    }
+    (byTurma.get(turmaId) ?? byTurma.set(turmaId, []).get(turmaId)!).push(pid);
+  });
+
+  let atualizadas = 0;
+  for (const [turmaId, ids] of byTurma) {
+    const r = await prisma.person.updateMany({
+      where: { id: { in: ids } },
+      data: { turmaId },
+    });
+    atualizadas += r.count;
+  }
+  res.json({ atualizadas, naoEncontrados, turmaInvalida });
+});
+
 // POST /api/people  { num, nome, isMonitor, turmaId }
 peopleRouter.post("/", async (req, res) => {
   const nome = str(req.body?.nome, 80).toUpperCase();
