@@ -81,7 +81,7 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-olivaEsc border border-amareloMil w-full max-w-[680px] p-6"
+        className="bg-olivaEsc border border-amareloMil w-full max-w-[680px] p-4 sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
@@ -103,7 +103,7 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
         )}
 
         {/* Cabeçalho / metadados */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div>
             <label className={labelCls}>Nº DO ADITAMENTO</label>
             <input
@@ -152,7 +152,7 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
           <h3 className="text-[11px] text-verdeBrilho tracking-[2px] font-mono mb-2">
             ◆ INSTRUTOR DE SOBREAVISO (POR DIA)
           </h3>
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
             {dias.map((dia, i) => (
               <div key={dia} className="flex items-center gap-2">
                 <span className="text-[10px] text-amareloMil font-mono w-20 shrink-0">
@@ -217,7 +217,7 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
         </div>
 
         {/* Assinatura / lema */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
           <div>
             <label className={labelCls}>ASSINANTE</label>
             <input
@@ -234,7 +234,7 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
               onChange={(e) => set("posto", e.target.value)}
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className={labelCls}>FUNÇÃO DO ASSINANTE</label>
             <input
               className={inputCls}
@@ -242,7 +242,7 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
               onChange={(e) => set("funcaoAssinante", e.target.value)}
             />
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className={labelCls}>LEMA (RODAPÉ)</label>
             <input
               className={inputCls}

@@ -53,6 +53,8 @@ Sessão **stateless por cookie** (`sg_session`): token = payload com `exp` + HMA
 - Rotas em `server/src/routes/`: `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`.
 - Em produção o **mesmo processo Node** serve a API e o frontend buildado (`CLIENT_DIST`, fallback SPA para `index.html`). Em dev o Vite faz proxy de `/api`.
 - Client: `client/src/api.ts` centraliza o fetch (`credentials: "include"`). `App.tsx` é a tela principal com abas (`escala`/`guardas`/`config`/`usuarios`); `AuthGate.tsx` + `Login.tsx` controlam o acesso. Exportação PDF (paisagem) e CSV (`;` + BOM para Excel PT-BR) em `client/src/export.ts`.
+- O Aditamento (documento oficial em PDF/impressão) é montado 100% no client: `client/src/aditamento.ts` (`buildAditamentoHTML`) + `components/AditamentoModal.tsx`. Pode ser gerado a partir da escala em memória **ou** importando um CSV de escala via `client/src/parseEscalaCsv.ts` (parser tolerante que faz o round-trip do CSV exportado por `export.ts`: grade função×dia, célula `NUM NOME`, rótulo da função herdado nas linhas de vaga seguintes).
+- **Mobile-first**: a UI usa breakpoints `sm:`/`md:` do Tailwind; o padrão (sem prefixo) é o layout de celular. A grade da escala (`EscalaTab`) rola horizontalmente no celular (`min-w-[720px]`).
 
 ## Deploy
 

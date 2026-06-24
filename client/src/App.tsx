@@ -11,6 +11,7 @@ import {
 import { SeletorPessoa } from "./components/SeletorPessoa";
 import { AditamentoModal } from "./components/AditamentoModal";
 import { exportarEscalaCSV, exportarHistoricoCSV, exportarPDF } from "./export";
+import { parseEscalaCsv } from "./parseEscalaCsv";
 
 type Aba = "escala" | "guardas" | "config" | "usuarios";
 type Editando = { dia: number; func: (typeof FUNCOES)[number]; idx: number } | null;
@@ -98,6 +99,21 @@ export default function App({ onLogout }: { onLogout: () => void }) {
     }
   }, [inicio, balancear]);
 
+  // Importa uma escala em CSV e já abre o Aditamento baseado nela.
+  const importarEscalaCsv = useCallback(async (file: File) => {
+    setErro(null);
+    setMsg(null);
+    try {
+      const texto = await file.text();
+      const imp = parseEscalaCsv(texto);
+      setDto({ ...imp, balanceado: false });
+      setAba("escala");
+      setShowAditamento(true);
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }, []);
+
   const editarCelula = (
     dia: number,
     func: (typeof FUNCOES)[number],
@@ -171,7 +187,7 @@ export default function App({ onLogout }: { onLogout: () => void }) {
       <Header onLogout={onLogout} />
       <Tabs aba={aba} setAba={setAba} />
 
-      <div className="max-w-[1100px] mx-auto px-4 py-6">
+      <div className="max-w-[1100px] mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {erro && (
           <div className="mb-4 border border-vermelho bg-vermelho/20 text-caquiClaro px-4 py-2 text-xs font-mono">
             ⚠ {erro}
@@ -189,6 +205,7 @@ export default function App({ onLogout }: { onLogout: () => void }) {
             histMsg={histMsg}
             onImportar={importarHistorico}
             onLimpar={limparHistorico}
+            onImportarEscala={importarEscalaCsv}
           />
         )}
 
@@ -221,6 +238,7 @@ export default function App({ onLogout }: { onLogout: () => void }) {
             onIrConfig={() => setAba("config")}
             onHistorico={baixarHistorico}
             onAditamento={() => setShowAditamento(true)}
+            onImportarEscala={importarEscalaCsv}
           />
         )}
 
@@ -245,31 +263,31 @@ export default function App({ onLogout }: { onLogout: () => void }) {
 
 function Header({ onLogout }: { onLogout: () => void }) {
   return (
-    <div className="bg-olivaEsc border-b-[3px] border-amareloMil px-6 py-[18px] relative">
-      <div className="max-w-[1100px] mx-auto flex items-center gap-4">
-        <div className="w-[52px] h-[52px] border-2 border-amareloMil rounded-full flex items-center justify-center text-2xl shrink-0 bg-oliva">
+    <div className="bg-olivaEsc border-b-[3px] border-amareloMil px-4 sm:px-6 py-3 sm:py-[18px]">
+      <div className="max-w-[1100px] mx-auto flex items-center gap-3 sm:gap-4">
+        <div className="w-11 h-11 sm:w-[52px] sm:h-[52px] border-2 border-amareloMil rounded-full flex items-center justify-center text-xl sm:text-2xl shrink-0 bg-oliva">
           ★
         </div>
-        <div>
-          <h1 className="m-0 text-2xl font-bold text-caquiClaro font-estencil tracking-[2px]">
+        <div className="min-w-0">
+          <h1 className="m-0 text-lg sm:text-2xl font-bold text-caquiClaro font-estencil tracking-[2px] leading-tight">
             ESCALA DE SERVIÇO · T2
           </h1>
-          <p className="mt-0.5 text-[11px] text-amareloMil tracking-[4px] font-mono">
+          <p className="mt-0.5 text-[10px] sm:text-[11px] text-amareloMil tracking-[2px] sm:tracking-[4px] font-mono truncate">
             // PREVISÃO OPERACIONAL DE GUARDA
           </p>
         </div>
-      </div>
-      <div className="absolute top-2 right-4 flex items-center gap-3">
-        <span className="text-[10px] text-areia font-mono tracking-wide">
-          CLASSIF: USO INTERNO
-        </span>
-        <button
-          onClick={onLogout}
-          title="Sair"
-          className="text-[10px] text-amareloMil border border-amareloMil/50 px-2 py-0.5 font-mono tracking-wide hover:bg-amareloMil hover:text-preto"
-        >
-          ⏻ SAIR
-        </button>
+        <div className="ml-auto flex items-center gap-3 shrink-0">
+          <span className="hidden md:inline text-[10px] text-areia font-mono tracking-wide">
+            CLASSIF: USO INTERNO
+          </span>
+          <button
+            onClick={onLogout}
+            title="Sair"
+            className="text-[10px] text-amareloMil border border-amareloMil/50 px-2 py-1 font-mono tracking-wide hover:bg-amareloMil hover:text-preto"
+          >
+            ⏻ SAIR
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -283,13 +301,13 @@ function Tabs({ aba, setAba }: { aba: Aba; setAba: (a: Aba) => void }) {
     ["usuarios", "▥ USUÁRIOS"],
   ];
   return (
-    <div className="bg-olivaEsc border-b border-linha px-6">
-      <div className="max-w-[1100px] mx-auto flex">
+    <div className="bg-olivaEsc border-b border-linha px-2 sm:px-6">
+      <div className="max-w-[1100px] mx-auto flex overflow-x-auto">
         {tabs.map(([id, label]) => (
           <button
             key={id}
             onClick={() => setAba(id)}
-            className={`px-[22px] py-3 text-[13px] font-semibold tracking-[2px] font-mono border-b-[3px] ${
+            className={`px-3 sm:px-[22px] py-3 text-[12px] sm:text-[13px] font-semibold tracking-[1px] sm:tracking-[2px] font-mono border-b-[3px] whitespace-nowrap ${
               aba === id
                 ? "bg-oliva border-amareloMil text-amareloMil"
                 : "border-transparent text-areia"
@@ -313,6 +331,7 @@ function ConfigTab({
   histMsg,
   onImportar,
   onLimpar,
+  onImportarEscala,
 }: {
   inicio: string;
   setInicio: (s: string) => void;
@@ -323,6 +342,7 @@ function ConfigTab({
   histMsg: string | null;
   onImportar: (file: File, mode: "replace" | "add") => void;
   onLimpar: () => void;
+  onImportarEscala: (file: File) => void;
 }) {
   return (
     <div className="max-w-[480px]">
@@ -437,6 +457,31 @@ function ConfigTab({
           >
             ⚐ GERAR ESCALA
           </button>
+
+          <div className="bg-preto border border-dashed border-amareloMil px-3 py-3">
+            <span className="text-[11px] text-amareloMil block mb-1 tracking-[2px] font-mono">
+              📄 ADITAMENTO A PARTIR DE CSV
+            </span>
+            <p className="text-[10px] text-areia font-mono leading-relaxed mb-2.5">
+              &gt; SUBA UMA ESCALA EM CSV (GRADE FUNÇÃO×DIA, CÉLULAS{" "}
+              <span className="text-amareloMil">NUM NOME</span> — O MESMO FORMATO
+              DO BOTÃO <span className="text-amareloMil">CSV</span> DA ESCALA). ABRE
+              O ADITAMENTO JÁ PREENCHIDO.
+            </p>
+            <label className="inline-block bg-amareloMil text-preto px-3 py-1.5 text-[11px] font-bold cursor-pointer tracking-wide font-mono">
+              ↥ IMPORTAR ESCALA (CSV)
+              <input
+                type="file"
+                accept=".csv,.txt,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onImportarEscala(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -609,6 +654,7 @@ function EscalaTab({
   onIrConfig,
   onHistorico,
   onAditamento,
+  onImportarEscala,
 }: {
   dto: EscalaDTO | null;
   monitores: Person[];
@@ -628,6 +674,7 @@ function EscalaTab({
   onIrConfig: () => void;
   onHistorico: () => void;
   onAditamento: () => void;
+  onImportarEscala: (file: File) => void;
 }) {
   if (!dto) {
     return (
@@ -636,12 +683,27 @@ function EscalaTab({
         <p className="text-caqui text-sm mb-6 tracking-wide font-mono">
           NENHUMA ESCALA EM VIGOR — EMITA A ORDEM DE SERVIÇO
         </p>
-        <button
-          onClick={onIrConfig}
-          className="bg-amareloMil text-preto px-7 py-3 font-bold text-sm tracking-[2px] font-estencil"
-        >
-          ▦ IR AO COMANDO
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+          <button
+            onClick={onIrConfig}
+            className="w-full sm:w-auto bg-amareloMil text-preto px-7 py-3 font-bold text-sm tracking-[2px] font-estencil"
+          >
+            ▦ IR AO COMANDO
+          </button>
+          <label className="w-full sm:w-auto text-center bg-transparent border border-amareloMil text-amareloMil px-7 py-3 font-bold text-sm tracking-[2px] font-mono cursor-pointer">
+            ↥ ADITAMENTO VIA CSV
+            <input
+              type="file"
+              accept=".csv,.txt,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onImportarEscala(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
       </div>
     );
   }
