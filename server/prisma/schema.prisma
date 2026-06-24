@@ -27,6 +27,15 @@ model Person {
   @@index([isMonitor])
 }
 
+/// Usuários de acesso ao sistema (login). Senha guardada com hash (scrypt).
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
 /// Instrutores de Sobreaviso (SGTs) — escolhidos por dia no aditamento.
 model Instructor {
   id        String   @id @default(cuid())

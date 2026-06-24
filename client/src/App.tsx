@@ -12,7 +12,7 @@ import { SeletorPessoa } from "./components/SeletorPessoa";
 import { AditamentoModal } from "./components/AditamentoModal";
 import { exportarEscalaCSV, exportarHistoricoCSV, exportarPDF } from "./export";
 
-type Aba = "escala" | "guardas" | "config";
+type Aba = "escala" | "guardas" | "config" | "usuarios";
 type Editando = { dia: number; func: (typeof FUNCOES)[number]; idx: number } | null;
 
 function proximaTercaISO(): string {
@@ -223,6 +223,8 @@ export default function App({ onLogout }: { onLogout: () => void }) {
             onAditamento={() => setShowAditamento(true)}
           />
         )}
+
+        {aba === "usuarios" && <UsuariosTab onErro={setErro} />}
       </div>
 
       {showAditamento && dto && (
@@ -278,6 +280,7 @@ function Tabs({ aba, setAba }: { aba: Aba; setAba: (a: Aba) => void }) {
     ["escala", "▣ ESCALA"],
     ["guardas", "▤ EFETIVO"],
     ["config", "▦ COMANDO"],
+    ["usuarios", "▥ USUÁRIOS"],
   ];
   return (
     <div className="bg-olivaEsc border-b border-linha px-6">
@@ -796,6 +799,131 @@ function EscalaTab({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
+  const [usuarios, setUsuarios] = useState<import("./types").Usuario[]>([]);
+  const [nome, setNome] = useState("");
+  const [senha, setSenha] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      setUsuarios(await api.getUsers());
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const adicionar = async () => {
+    onErro(null);
+    setMsg(null);
+    try {
+      await api.addUser(nome.trim(), senha);
+      setMsg(`Usuário "${nome.trim().toLowerCase()}" criado.`);
+      setNome("");
+      setSenha("");
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const remover = async (id: string, username: string) => {
+    onErro(null);
+    if (!confirm(`Remover o usuário "${username}"?`)) return;
+    try {
+      await api.removeUser(id);
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const redefinir = async (id: string, username: string) => {
+    const nova = prompt(`Nova senha para "${username}" (mín. 4):`);
+    if (!nova) return;
+    try {
+      await api.resetUserPassword(id, nova);
+      setMsg(`Senha de "${username}" redefinida.`);
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="max-w-[560px]">
+      <div className="bg-olivaEsc border border-amareloMil p-5 mb-5">
+        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px]">
+          ▥ USUÁRIOS DE ACESSO
+        </h2>
+        <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
+          &gt; QUEM PODE ENTRAR NO SISTEMA. SENHAS GUARDADAS CRIPTOGRAFADAS.
+        </p>
+        <div className="flex gap-2.5 flex-wrap">
+          <input
+            placeholder="usuário"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            className="flex-1 min-w-[120px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
+          />
+          <input
+            type="password"
+            placeholder="senha (mín. 4)"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && adicionar()}
+            className="flex-1 min-w-[120px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
+          />
+          <button
+            onClick={adicionar}
+            className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono"
+          >
+            + CRIAR
+          </button>
+        </div>
+        {msg && (
+          <p className="mt-2 text-[11px] text-amareloMil font-mono">✓ {msg}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {usuarios.map((u) => (
+          <div
+            key={u.id}
+            className="bg-olivaEsc border border-linha px-3 py-2.5 flex items-center justify-between font-mono"
+          >
+            <span className="text-[13px] text-caquiClaro">
+              <span className="text-amareloMil mr-2">◉</span>
+              {u.username}
+            </span>
+            <span className="flex items-center gap-2">
+              <button
+                onClick={() => redefinir(u.id, u.username)}
+                className="text-[10px] text-areia border border-linha px-2 py-0.5 hover:text-amareloMil"
+              >
+                ⟳ SENHA
+              </button>
+              <button
+                onClick={() => remover(u.id, u.username)}
+                className="text-vermelho text-base leading-none"
+                title="Remover"
+              >
+                🗑
+              </button>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="text-areia text-[11px] mt-4 font-mono">
+        &gt; {usuarios.length} USUÁRIO(S) ATIVO(S).
+      </p>
     </div>
   );
 }

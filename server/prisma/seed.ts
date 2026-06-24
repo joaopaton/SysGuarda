@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/password.js";
 
 const prisma = new PrismaClient();
 
@@ -83,6 +84,17 @@ async function main() {
       update: { active: true },
       create: { nome },
     });
+  }
+
+  // Usuário de acesso inicial (a partir do .env) se ainda não houver nenhum.
+  const qtdUsers = await prisma.user.count();
+  if (qtdUsers === 0) {
+    const u = (process.env.APP_USER || "admin").trim().toLowerCase();
+    const p = process.env.APP_PASSWORD || "admin";
+    await prisma.user.create({
+      data: { username: u, passwordHash: hashPassword(p) },
+    });
+    console.log(`Usuário inicial criado: "${u}".`);
   }
 
   const total = await prisma.person.count();

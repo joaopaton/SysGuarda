@@ -9,13 +9,15 @@ import {
   sessaoValida,
   emitirSessao,
   limparSessao,
-  credenciaisOk,
   requireAuth,
 } from "./auth.js";
+import { prisma } from "./prisma.js";
+import { verifyPassword } from "./password.js";
 import { peopleRouter } from "./routes/people.js";
 import { scheduleRouter } from "./routes/schedule.js";
 import { historyRouter } from "./routes/history.js";
 import { aditamentoRouter } from "./routes/aditamento.js";
+import { usersRouter } from "./routes/users.js";
 
 const app = express();
 
@@ -29,13 +31,15 @@ app.get("/api/me", (req, res) => {
   res.json({ authenticated: !loginAtivo() || sessaoValida(req) });
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   if (!loginAtivo()) {
     emitirSessao(res);
     return res.json({ ok: true });
   }
-  const { usuario, senha } = req.body ?? {};
-  if (credenciaisOk(String(usuario ?? ""), String(senha ?? ""))) {
+  const usuario = String(req.body?.usuario ?? "").trim().toLowerCase();
+  const senha = String(req.body?.senha ?? "");
+  const user = await prisma.user.findUnique({ where: { username: usuario } });
+  if (user && user.active && verifyPassword(senha, user.passwordHash)) {
     emitirSessao(res);
     return res.json({ ok: true });
   }
@@ -53,6 +57,7 @@ app.use("/api/people", peopleRouter);
 app.use("/api/schedule", scheduleRouter);
 app.use("/api/history", historyRouter);
 app.use("/api/aditamento", aditamentoRouter);
+app.use("/api/users", usersRouter);
 
 // ===== Frontend (produção) =====
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

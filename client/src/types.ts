@@ -40,6 +40,12 @@ export interface Instrutor {
   nome: string;
 }
 
+export interface Usuario {
+  id: string;
+  username: string;
+  createdAt: string;
+}
+
 export interface AditamentoConfig {
   tg: string;
   cidade: string;

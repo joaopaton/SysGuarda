@@ -52,9 +52,9 @@ function lerCookie(req: Request): string | undefined {
   return undefined;
 }
 
-/** Login protegido ativo somente quando APP_PASSWORD está definido. */
+/** Login exigido em produção (ou se APP_PASSWORD estiver definido). */
 export function loginAtivo() {
-  return Boolean(process.env.APP_PASSWORD);
+  return process.env.NODE_ENV === "production" || Boolean(process.env.APP_PASSWORD);
 }
 
 export function sessaoValida(req: Request) {
@@ -73,12 +73,6 @@ export function emitirSessao(res: Response) {
 
 export function limparSessao(res: Response) {
   res.clearCookie(COOKIE, { path: "/" });
-}
-
-export function credenciaisOk(usuario: string, senha: string) {
-  const u = process.env.APP_USER || "admin";
-  const p = process.env.APP_PASSWORD || "";
-  return Boolean(usuario) && Boolean(senha) && igual(usuario, u) && igual(senha, p);
 }
 
 /** Middleware: bloqueia rotas protegidas quando o login está ativo. */

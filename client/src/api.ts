@@ -4,6 +4,7 @@ import type {
   EscalaDTO,
   Instrutor,
   Person,
+  Usuario,
 } from "./types";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -29,6 +30,21 @@ export const api = {
       body: JSON.stringify({ usuario, senha }),
     }),
   logout: () => req<{ ok: boolean }>("/api/logout", { method: "POST" }),
+
+  // Usuários
+  getUsers: () => req<Usuario[]>("/api/users"),
+  addUser: (username: string, password: string) =>
+    req<Usuario>("/api/users", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  resetUserPassword: (id: string, password: string) =>
+    req<{ ok: boolean }>(`/api/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ password }),
+    }),
+  removeUser: (id: string) =>
+    req<void>(`/api/users/${id}`, { method: "DELETE" }),
 
   getPeople: () =>
     req<{ monitores: Person[]; guardas: Person[] }>("/api/people"),
