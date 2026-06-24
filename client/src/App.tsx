@@ -22,7 +22,7 @@ function proximaTercaISO(): string {
   return d.toISOString().split("T")[0];
 }
 
-export default function App() {
+export default function App({ onLogout }: { onLogout: () => void }) {
   const [aba, setAba] = useState<Aba>("escala");
   const [monitores, setMonitores] = useState<Person[]>([]);
   const [guardas, setGuardas] = useState<Person[]>([]);
@@ -168,7 +168,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-caqui font-cond">
-      <Header />
+      <Header onLogout={onLogout} />
       <Tabs aba={aba} setAba={setAba} />
 
       <div className="max-w-[1100px] mx-auto px-4 py-6">
@@ -241,7 +241,7 @@ export default function App() {
   );
 }
 
-function Header() {
+function Header({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="bg-olivaEsc border-b-[3px] border-amareloMil px-6 py-[18px] relative">
       <div className="max-w-[1100px] mx-auto flex items-center gap-4">
@@ -257,8 +257,17 @@ function Header() {
           </p>
         </div>
       </div>
-      <div className="absolute top-2 right-4 text-[10px] text-areia font-mono tracking-wide">
-        CLASSIF: USO INTERNO
+      <div className="absolute top-2 right-4 flex items-center gap-3">
+        <span className="text-[10px] text-areia font-mono tracking-wide">
+          CLASSIF: USO INTERNO
+        </span>
+        <button
+          onClick={onLogout}
+          title="Sair"
+          className="text-[10px] text-amareloMil border border-amareloMil/50 px-2 py-0.5 font-mono tracking-wide hover:bg-amareloMil hover:text-preto"
+        >
+          ⏻ SAIR
+        </button>
       </div>
     </div>
   );

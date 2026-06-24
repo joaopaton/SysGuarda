@@ -9,6 +9,7 @@ import type {
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...init,
   });
   if (!res.ok) {
@@ -20,6 +21,15 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // Autenticação
+  me: () => req<{ authenticated: boolean }>("/api/me"),
+  login: (usuario: string, senha: string) =>
+    req<{ ok: boolean }>("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ usuario, senha }),
+    }),
+  logout: () => req<{ ok: boolean }>("/api/logout", { method: "POST" }),
+
   getPeople: () =>
     req<{ monitores: Person[]; guardas: Person[] }>("/api/people"),
 
