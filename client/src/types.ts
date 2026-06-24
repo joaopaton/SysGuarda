@@ -35,6 +35,22 @@ export interface EscalaDTO {
   monitoresCount?: number;
 }
 
+export interface Instrutor {
+  id: string;
+  nome: string;
+}
+
+export interface AditamentoConfig {
+  tg: string;
+  cidade: string;
+  numero: string;
+  uniforme: string;
+  assinante: string;
+  posto: string;
+  funcaoAssinante: string;
+  lema: string;
+}
+
 export const COR_FUNC: Record<Funcao, string> = {
   "Cmt Gd TG": "#d4b942",
   "Permanência Manhã": "#8a9a4d",

@@ -27,6 +27,28 @@ model Person {
   @@index([isMonitor])
 }
 
+/// Instrutores de Sobreaviso (SGTs) — escolhidos por dia no aditamento.
+model Instructor {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+/// Configuração (linha única) dos textos fixos do Aditamento.
+model AditamentoConfig {
+  id              String   @id @default("singleton")
+  tg              String   @default("05-003")
+  cidade          String   @default("Londrina-PR")
+  numero          String   @default("002")
+  uniforme        String   @default("9º C2")
+  assinante       String   @default("MARIO ALESSANDRO GOMES HENRIQUE")
+  posto           String   @default("S Ten")
+  funcaoAssinante String   @default("Chefe da Instrução do TG 05-003")
+  lema            String   @default("160 ANOS DA BATALHA DE TUIUTÍ: A BATALHA DOS PATRONOS!")
+  updatedAt       DateTime @updatedAt
+}
+
 /// Histórico manual importado (planilha/CSV das guardas feitas à mão).
 /// Soma-se ao histórico calculado das escalas salvas para balancear o sorteio.
 model ManualHistory {

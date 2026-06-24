@@ -71,8 +71,22 @@ async function main() {
       create: { ...g, isMonitor: false },
     });
   }
+  const INSTRUTORES = [
+    "SGT SCHÜTZ",
+    "SGT ST MARIO GOMES",
+    "SGT ROBSON",
+    "SGT LUCAS",
+  ];
+  for (const nome of INSTRUTORES) {
+    await prisma.instructor.upsert({
+      where: { nome },
+      update: { active: true },
+      create: { nome },
+    });
+  }
+
   const total = await prisma.person.count();
-  console.log(`Seed concluído: ${total} pessoas no efetivo.`);
+  console.log(`Seed concluído: ${total} pessoas + ${INSTRUTORES.length} instrutores.`);
 }
 
 main()

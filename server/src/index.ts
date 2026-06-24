@@ -3,6 +3,7 @@ import cors from "cors";
 import { peopleRouter } from "./routes/people.js";
 import { scheduleRouter } from "./routes/schedule.js";
 import { historyRouter } from "./routes/history.js";
+import { aditamentoRouter } from "./routes/aditamento.js";
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/people", peopleRouter);
 app.use("/api/schedule", scheduleRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/aditamento", aditamentoRouter);
 
 const PORT = Number(process.env.PORT) || 3333;
 app.listen(PORT, () => {

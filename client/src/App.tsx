@@ -9,6 +9,7 @@ import {
   type Person,
 } from "./types";
 import { SeletorPessoa } from "./components/SeletorPessoa";
+import { AditamentoModal } from "./components/AditamentoModal";
 import { exportarEscalaCSV, exportarHistoricoCSV, exportarPDF } from "./export";
 
 type Aba = "escala" | "guardas" | "config";
@@ -36,6 +37,7 @@ export default function App() {
   const [msg, setMsg] = useState<string | null>(null);
   const [histCount, setHistCount] = useState(0);
   const [histMsg, setHistMsg] = useState<string | null>(null);
+  const [showAditamento, setShowAditamento] = useState(false);
 
   const carregarEfetivo = useCallback(async () => {
     try {
@@ -218,9 +220,19 @@ export default function App() {
             msg={msg}
             onIrConfig={() => setAba("config")}
             onHistorico={baixarHistorico}
+            onAditamento={() => setShowAditamento(true)}
           />
         )}
       </div>
+
+      {showAditamento && dto && (
+        <AditamentoModal
+          startDate={dto.startDate}
+          dias={dto.dias}
+          escala={dto.escala}
+          onClose={() => setShowAditamento(false)}
+        />
+      )}
 
       <div className="text-center py-5 text-[10px] text-areia font-mono tracking-[2px]">
         ▬▬▬ DOCUMENTO SUJEITO A ALTERAÇÃO ▬▬▬
@@ -584,6 +596,7 @@ function EscalaTab({
   msg,
   onIrConfig,
   onHistorico,
+  onAditamento,
 }: {
   dto: EscalaDTO | null;
   monitores: Person[];
@@ -602,6 +615,7 @@ function EscalaTab({
   msg: string | null;
   onIrConfig: () => void;
   onHistorico: () => void;
+  onAditamento: () => void;
 }) {
   if (!dto) {
     return (
@@ -640,11 +654,14 @@ function EscalaTab({
           <BtnAcao onClick={onReembaralhar} variant="outline">
             ⟳ REEMBARALHAR
           </BtnAcao>
+          <BtnAcao onClick={onAditamento} variant="amarelo">
+            📄 ADITAMENTO
+          </BtnAcao>
           <BtnAcao
             onClick={() => exportarPDF(dias, escala)}
             variant="vermelho"
           >
-            ⎙ PDF
+            ⎙ PDF GRADE
           </BtnAcao>
           <BtnAcao
             onClick={() => exportarEscalaCSV(dias, escala)}

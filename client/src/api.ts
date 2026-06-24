@@ -1,4 +1,10 @@
-import type { DiaEscala, EscalaDTO, Person } from "./types";
+import type {
+  AditamentoConfig,
+  DiaEscala,
+  EscalaDTO,
+  Instrutor,
+  Person,
+} from "./types";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -67,4 +73,23 @@ export const api = {
     }),
 
   clearHistory: () => req<void>("/api/history", { method: "DELETE" }),
+
+  // Instrutores (SGTs)
+  getInstrutores: () => req<Instrutor[]>("/api/aditamento/instructors"),
+  addInstrutor: (nome: string) =>
+    req<Instrutor>("/api/aditamento/instructors", {
+      method: "POST",
+      body: JSON.stringify({ nome }),
+    }),
+  removeInstrutor: (id: string) =>
+    req<void>(`/api/aditamento/instructors/${id}`, { method: "DELETE" }),
+
+  // Config do aditamento (textos fixos)
+  getAditamentoConfig: () =>
+    req<AditamentoConfig>("/api/aditamento/config"),
+  saveAditamentoConfig: (cfg: AditamentoConfig) =>
+    req<AditamentoConfig>("/api/aditamento/config", {
+      method: "PUT",
+      body: JSON.stringify(cfg),
+    }),
 };
