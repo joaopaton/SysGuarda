@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  /* textura sutil de camuflagem via gradientes radiais */
+  background:
+    radial-gradient(circle at 15% 20%, #4d582933 0 12%, transparent 13%),
+    radial-gradient(circle at 70% 60%, #2a301755 0 18%, transparent 19%),
+    radial-gradient(circle at 40% 85%, #5a6b3522 0 14%, transparent 15%),
+    #3a4220;
+  min-height: 100vh;
+  font-family: "Oswald", "Arial Narrow", sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #2a3017;
+}
+::-webkit-scrollbar-thumb {
+  background: #5a6b35;
+}

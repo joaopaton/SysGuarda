@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ALVO DE PRODUÇÃO: PostgreSQL. Trocar `provider` para "postgresql" e ajustar
+// DATABASE_URL quando o Postgres estiver disponível (Docker ou nativo).
+// Em dev local sem infra, usamos SQLite (arquivo prisma/dev.db).
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Efetivo: monitores (isMonitor=true) e guardas gerais.
+/// A identidade é sempre (num + nome) — o nº 229 existe em dois registros.
+model Person {
+  id        String   @id @default(cuid())
+  num       String
+  nome      String
+  isMonitor Boolean  @default(false)
+  active    Boolean  @default(true) // pertence ao efetivo (soft-delete quando false)
+  available Boolean  @default(true) // disponível p/ escala (false = doente/afastado)
+  createdAt DateTime @default(now())
+
+  assignments Assignment[]
+
+  @@unique([num, nome])
+  @@index([isMonitor])
+}
+
+/// Histórico manual importado (planilha/CSV das guardas feitas à mão).
+/// Soma-se ao histórico calculado das escalas salvas para balancear o sorteio.
+model ManualHistory {
+  id        String   @id @default(cuid())
+  num       String
+  nome      String
+  guardas   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([num, nome])
+}
+
+/// Uma escala gerada (terça → segunda, 7 dias).
+model Schedule {
+  id        String   @id @default(cuid())
+  startDate DateTime // terça inicial (00:00)
+  createdAt DateTime @default(now())
+
+  assignments Assignment[]
+
+  @@index([startDate])
+}
+
+/// Cada vaga preenchida em um dia/função/slot de uma escala.
+model Assignment {
+  id         String   @id @default(cuid())
+  scheduleId String
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  dayIndex Int // 0..6 (0 = terça)
+  funcao   String
+  slot     Int // posição da vaga dentro da função
+
+  // snapshot do nome/num + vínculo opcional ao Person (pode ser VAZIO)
+  personId   String?
+  person     Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personNum  String
+  personNome String
+
+  @@unique([scheduleId, dayIndex, funcao, slot])
+  @@index([scheduleId])
+}
