@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { parseHistoricoText, type LinhaHistorico } from "../parseHistorico.js";
+import { requireSuperadmin } from "../auth.js";
 
 export const historyRouter = Router();
 
@@ -43,7 +44,7 @@ historyRouter.get("/", async (_req, res) => {
 
 // POST /api/history  { csv?: string, entries?: [...], mode: "replace" | "add" }
 // Aceita CSV bruto (contagem OU grade de escala) ou linhas já parseadas.
-historyRouter.post("/", async (req, res) => {
+historyRouter.post("/", requireSuperadmin, async (req, res) => {
   const { csv, entries, mode } = req.body ?? {};
   let linhas =
     typeof csv === "string" && csv.trim()
@@ -80,7 +81,7 @@ historyRouter.post("/", async (req, res) => {
 });
 
 // DELETE /api/history -> limpa o histórico manual
-historyRouter.delete("/", async (_req, res) => {
+historyRouter.delete("/", requireSuperadmin, async (_req, res) => {
   await prisma.manualHistory.deleteMany();
   res.status(204).end();
 });

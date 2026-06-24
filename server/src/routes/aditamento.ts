@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
+import { requireSuperadmin } from "../auth.js";
+import { str } from "../scope.js";
 
 export const aditamentoRouter = Router();
 
@@ -13,8 +15,8 @@ aditamentoRouter.get("/instructors", async (_req, res) => {
   res.json(rows);
 });
 
-aditamentoRouter.post("/instructors", async (req, res) => {
-  const nome = String(req.body?.nome ?? "").trim().toUpperCase();
+aditamentoRouter.post("/instructors", requireSuperadmin, async (req, res) => {
+  const nome = str(req.body?.nome, 80).toUpperCase();
   if (!nome) return res.status(400).json({ error: "nome é obrigatório" });
   const inst = await prisma.instructor.upsert({
     where: { nome },
@@ -24,9 +26,9 @@ aditamentoRouter.post("/instructors", async (req, res) => {
   res.status(201).json(inst);
 });
 
-aditamentoRouter.delete("/instructors/:id", async (req, res) => {
+aditamentoRouter.delete("/instructors/:id", requireSuperadmin, async (req, res) => {
   await prisma.instructor.update({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     data: { active: false },
   });
   res.status(204).end();
@@ -45,7 +47,7 @@ aditamentoRouter.get("/config", async (_req, res) => {
   res.json(cfg);
 });
 
-aditamentoRouter.put("/config", async (req, res) => {
+aditamentoRouter.put("/config", requireSuperadmin, async (req, res) => {
   const b = req.body ?? {};
   const campos = [
     "tg",

@@ -9,26 +9,49 @@ import {
   type Funcao,
 } from "../domain.js";
 import { gerarEscala, type Escala, type Historico } from "../generate.js";
+import { isSuperadmin, podeTurma, turmaAlvo, str } from "../scope.js";
 
 export const scheduleRouter = Router();
 
-async function efetivoAtivo() {
+const incluirTurma = { turma: { select: { id: true, codigo: true, apelido: true } } };
+
+// Efetivo disponível para gerar a escala de UMA turma:
+//  - monitores: TG-wide (todos os disponíveis).
+//  - guardas: apenas os da turma (disponíveis).
+//  - byKey: mapa completo (ativos) p/ vincular personId ao salvar.
+async function efetivoAtivo(turmaId: string | null) {
   const people = await prisma.person.findMany({ where: { active: true } });
-  // Geração usa apenas quem está disponível (não doente/afastado).
   const disponiveis = people.filter((p) => p.available);
   return {
     monitores: disponiveis.filter((p) => p.isMonitor),
-    guardas: disponiveis.filter((p) => !p.isMonitor),
-    byKey: new Map(people.map((p) => [keyOf(p), p])), // mapa completo p/ salvar
+    guardas: disponiveis.filter((p) => !p.isMonitor && p.turmaId === turmaId),
+    byKey: new Map(people.map((p) => [keyOf(p), p])),
   };
 }
 
+/** Próxima turma do rodízio (após a turma da escala mais recente). */
+async function proximaTurma(): Promise<string | null> {
+  const turmas = await prisma.turma.findMany({
+    where: { active: true },
+    orderBy: { ordem: "asc" },
+  });
+  if (turmas.length === 0) return null;
+  const ultima = await prisma.schedule.findFirst({
+    where: { turmaId: { not: null } },
+    orderBy: { startDate: "desc" },
+  });
+  if (!ultima?.turmaId) return turmas[0].id;
+  const idx = turmas.findIndex((t) => t.id === ultima.turmaId);
+  return turmas[(idx + 1) % turmas.length].id;
+}
+
 /**
- * Histórico de balanceamento a partir das escalas já salvas no banco.
- * Conta quantas guardas cada (num+nome) fez nas últimas N escalas.
+ * Histórico de balanceamento de UMA turma: conta as guardas nas escalas
+ * salvas dessa turma + o histórico manual das pessoas dela.
  */
-async function historicoDoBanco(limite = 1): Promise<Historico> {
+async function historicoDoBanco(turmaId: string | null, limite = 4): Promise<Historico> {
   const ultimas = await prisma.schedule.findMany({
+    where: { turmaId },
     orderBy: { startDate: "desc" },
     take: limite,
     include: { assignments: true },
@@ -42,42 +65,68 @@ async function historicoDoBanco(limite = 1): Promise<Historico> {
     }
   }
 
-  // Soma o histórico manual importado (guardas feitas à mão).
+  // Histórico manual apenas das pessoas da turma.
+  const daTurma = await prisma.person.findMany({ where: { turmaId } });
+  const chaves = new Set(daTurma.map((p) => p.num + p.nome));
   const manual = await prisma.manualHistory.findMany();
   for (const m of manual) {
     const k = m.num + m.nome;
-    hist[k] = (hist[k] || 0) + m.guardas;
+    if (chaves.has(k)) hist[k] = (hist[k] || 0) + m.guardas;
   }
   return hist;
 }
 
-function escalaParaDTO(inicio: Date, escala: Escala) {
+function escalaParaDTO(
+  inicio: Date,
+  escala: Escala,
+  turma: { id: string; codigo: string; apelido: string } | null
+) {
   return {
     startDate: inicio.toISOString(),
     dias: getRotulos(inicio),
-    escala, // Funcao -> Pessoa[] por dia
+    escala,
+    turmaId: turma?.id ?? null,
+    turma,
   };
 }
 
-// POST /api/schedule/generate  { startDate, balancear }
-// Gera (sem salvar) — preview que o usuário pode reembaralhar/editar.
+// POST /api/schedule/generate  { startDate, balancear, turmaId }
 scheduleRouter.post("/generate", async (req, res) => {
   const { startDate, balancear } = req.body ?? {};
+  // Turma alvo: instrutor é forçado à sua; superadmin escolhe (ou rodízio).
+  let turmaId = turmaAlvo(req, str(req.body?.turmaId, 40) || null);
+  if (!turmaId && isSuperadmin(req)) turmaId = await proximaTurma();
+  if (!turmaId) {
+    return res.status(400).json({ error: "Selecione a turma da semana." });
+  }
+  const turma = await prisma.turma.findUnique({
+    where: { id: turmaId },
+    select: { id: true, codigo: true, apelido: true, active: true },
+  });
+  if (!turma || !turma.active) {
+    return res.status(400).json({ error: "Turma inválida." });
+  }
+
   const base = startDate ? new Date(startDate) : new Date();
   const inicio = ajustarParaTerca(base);
-  const { monitores, guardas } = await efetivoAtivo();
-  const historico = balancear ? await historicoDoBanco() : {};
+  const { monitores, guardas } = await efetivoAtivo(turmaId);
+  const historico = balancear ? await historicoDoBanco(turmaId) : {};
   const escala = gerarEscala(guardas, monitores, NUM_DIAS, historico);
   res.json({
-    ...escalaParaDTO(inicio, escala),
+    ...escalaParaDTO(inicio, escala, {
+      id: turma.id,
+      codigo: turma.codigo,
+      apelido: turma.apelido,
+    }),
     balanceado: Object.keys(historico).length > 0,
     monitoresCount: monitores.length,
+    guardasCount: guardas.length,
   });
 });
 
 // Monta os registros de Assignment a partir da escala + efetivo atual.
-async function assignmentsData(escala: Escala) {
-  const { byKey } = await efetivoAtivo();
+async function assignmentsData(escala: Escala, turmaId: string | null) {
+  const { byKey } = await efetivoAtivo(turmaId);
   return escala.flatMap((dia, dayIndex) =>
     FUNCOES.flatMap((func: Funcao) =>
       (dia[func] || []).map((p, slot) => {
@@ -95,55 +144,73 @@ async function assignmentsData(escala: Escala) {
   );
 }
 
-// POST /api/schedule  { startDate, escala }  -> persiste a escala
+function escalaValida(escala: unknown): escala is Escala {
+  return Array.isArray(escala) && escala.length > 0 && escala.length <= 31;
+}
+
+// POST /api/schedule  { startDate, escala, turmaId }
 scheduleRouter.post("/", async (req, res) => {
   const { startDate, escala } = req.body ?? {};
-  if (!startDate || !Array.isArray(escala)) {
+  if (!startDate || !escalaValida(escala)) {
     return res.status(400).json({ error: "startDate e escala são obrigatórios" });
+  }
+  const turmaId = turmaAlvo(req, str(req.body?.turmaId, 40) || null);
+  if (!podeTurma(req, turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta turma." });
   }
   const inicio = ajustarParaTerca(new Date(startDate));
   const created = await prisma.schedule.create({
     data: {
       startDate: inicio,
-      assignments: { create: await assignmentsData(escala as Escala) },
+      turmaId,
+      assignments: { create: await assignmentsData(escala, turmaId) },
     },
   });
   res.status(201).json({ id: created.id });
 });
 
-// PUT /api/schedule/:id  { startDate, escala }  -> atualiza escala existente
+// PUT /api/schedule/:id  { startDate, escala, turmaId }
 scheduleRouter.put("/:id", async (req, res) => {
   const { startDate, escala } = req.body ?? {};
-  if (!startDate || !Array.isArray(escala)) {
+  if (!startDate || !escalaValida(escala)) {
     return res.status(400).json({ error: "startDate e escala são obrigatórios" });
   }
   const existe = await prisma.schedule.findUnique({ where: { id: req.params.id } });
   if (!existe) return res.status(404).json({ error: "não encontrada" });
+  if (!podeTurma(req, existe.turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta escala." });
+  }
+  const turmaId = turmaAlvo(req, str(req.body?.turmaId, 40) || existe.turmaId);
 
   const inicio = ajustarParaTerca(new Date(startDate));
-  const data = await assignmentsData(escala as Escala);
-  // Troca todas as vagas: apaga as antigas e recria.
+  const data = await assignmentsData(escala, turmaId);
   await prisma.$transaction([
     prisma.assignment.deleteMany({ where: { scheduleId: req.params.id } }),
     prisma.schedule.update({
       where: { id: req.params.id },
-      data: { startDate: inicio, assignments: { create: data } },
+      data: { startDate: inicio, turmaId, assignments: { create: data } },
     }),
   ]);
   res.json({ id: req.params.id });
 });
 
-// DELETE /api/schedule/:id  -> remove a escala (assignments em cascata)
+// DELETE /api/schedule/:id
 scheduleRouter.delete("/:id", async (req, res) => {
+  const existe = await prisma.schedule.findUnique({ where: { id: req.params.id } });
+  if (!existe) return res.status(204).end();
+  if (!podeTurma(req, existe.turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta escala." });
+  }
   await prisma.schedule.delete({ where: { id: req.params.id } }).catch(() => {});
   res.status(204).end();
 });
 
-// GET /api/schedule -> lista escalas salvas
-scheduleRouter.get("/", async (_req, res) => {
+// GET /api/schedule -> lista escalas salvas (filtradas por turma p/ instrutor)
+scheduleRouter.get("/", async (req, res) => {
   const lista = await prisma.schedule.findMany({
+    where: isSuperadmin(req) ? {} : { turmaId: req.user?.turmaId ?? "__sem_turma__" },
     orderBy: { startDate: "desc" },
-    select: { id: true, startDate: true, createdAt: true },
+    select: { id: true, startDate: true, createdAt: true, ...incluirTurma },
   });
   res.json(lista);
 });
@@ -152,9 +219,12 @@ scheduleRouter.get("/", async (_req, res) => {
 scheduleRouter.get("/:id", async (req, res) => {
   const sch = await prisma.schedule.findUnique({
     where: { id: req.params.id },
-    include: { assignments: true },
+    include: { assignments: true, ...incluirTurma },
   });
   if (!sch) return res.status(404).json({ error: "não encontrada" });
+  if (!podeTurma(req, sch.turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta escala." });
+  }
 
   const escala: Escala = Array.from({ length: NUM_DIAS }, () => ({}) as any);
   for (const a of sch.assignments) {
@@ -164,7 +234,7 @@ scheduleRouter.get("/:id", async (req, res) => {
       nome: a.personNome,
     };
   }
-  res.json(escalaParaDTO(sch.startDate, escala));
+  res.json(escalaParaDTO(sch.startDate, escala, sch.turma));
 });
 
 // GET /api/schedule/:id/history -> contagem por pessoa (CSV no client)
@@ -174,6 +244,9 @@ scheduleRouter.get("/:id/history", async (req, res) => {
     include: { assignments: true },
   });
   if (!sch) return res.status(404).json({ error: "não encontrada" });
+  if (!podeTurma(req, sch.turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta escala." });
+  }
   const cont: Record<string, { num: string; nome: string; guardas: number }> = {};
   for (const a of sch.assignments) {
     if (a.personNum === "---") continue;

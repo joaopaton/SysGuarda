@@ -57,7 +57,35 @@ const GUARDAS = [
   { num: "250", nome: "MASENA" },
 ];
 
+// Turmas do TG 05-003 (rodízio T1 -> T4).
+const TURMAS = [
+  { codigo: "T1", apelido: "Caveira", ordem: 1 },
+  { codigo: "T2", apelido: "Pantera", ordem: 2 },
+  { codigo: "T3", apelido: "Cães de Guerra", ordem: 3 },
+  { codigo: "T4", apelido: "Aço", ordem: 4 },
+];
+
+// Contas iniciais. Senha padrão (trocar no 1º acesso): SEED_PASSWORD ou "mudar123".
+// role superadmin = Comandante do TG (vê tudo); instrutor = Sgt da turma.
+const CONTAS = [
+  { username: "mario", role: "superadmin", turma: "T3" }, // S Ten Mario Gomes
+  { username: "lucas", role: "instrutor", turma: "T1" }, // Sgt Lucas
+  { username: "schutz", role: "instrutor", turma: "T2" }, // Sgt Schütz
+  { username: "robson", role: "instrutor", turma: "T4" }, // Sgt Robson
+];
+
 async function main() {
+  // Turmas primeiro (necessárias p/ vincular pessoas e contas).
+  const turmaPorCodigo = new Map<string, string>();
+  for (const t of TURMAS) {
+    const turma = await prisma.turma.upsert({
+      where: { codigo: t.codigo },
+      update: { apelido: t.apelido, ordem: t.ordem, active: true },
+      create: t,
+    });
+    turmaPorCodigo.set(t.codigo, turma.id);
+  }
+
   for (const m of MONITORES) {
     await prisma.person.upsert({
       where: { num_nome: { num: m.num, nome: m.nome } },
@@ -86,19 +114,39 @@ async function main() {
     });
   }
 
-  // Usuário de acesso inicial (a partir do .env) se ainda não houver nenhum.
-  const qtdUsers = await prisma.user.count();
-  if (qtdUsers === 0) {
-    const u = (process.env.APP_USER || "admin").trim().toLowerCase();
-    const p = process.env.APP_PASSWORD || "admin";
-    await prisma.user.create({
-      data: { username: u, passwordHash: hashPassword(p) },
+  // Contas: comandante (superadmin) + instrutores. Senha só é definida na
+  // CRIAÇÃO — não sobrescreve a senha de quem já existe.
+  const senhaPadrao = process.env.SEED_PASSWORD || "mudar123";
+  for (const c of CONTAS) {
+    await prisma.user.upsert({
+      where: { username: c.username },
+      update: { role: c.role, turmaId: turmaPorCodigo.get(c.turma) ?? null, active: true },
+      create: {
+        username: c.username,
+        passwordHash: hashPassword(senhaPadrao),
+        role: c.role,
+        turmaId: turmaPorCodigo.get(c.turma) ?? null,
+      },
     });
-    console.log(`Usuário inicial criado: "${u}".`);
   }
 
+  // Usuário inicial do .env (compat): garante ao menos 1 superadmin de socorro.
+  const u = (process.env.APP_USER || "admin").trim().toLowerCase();
+  await prisma.user.upsert({
+    where: { username: u },
+    update: { role: "superadmin", active: true },
+    create: {
+      username: u,
+      passwordHash: hashPassword(process.env.APP_PASSWORD || senhaPadrao),
+      role: "superadmin",
+    },
+  });
+
   const total = await prisma.person.count();
-  console.log(`Seed concluído: ${total} pessoas + ${INSTRUTORES.length} instrutores.`);
+  console.log(
+    `Seed concluído: ${total} pessoas, ${TURMAS.length} turmas, ` +
+      `${CONTAS.length + 1} contas (senha padrão das novas: "${senhaPadrao}").`
+  );
 }
 
 main()
