@@ -378,7 +378,12 @@ function Header({
   onLogout: () => void;
   user: MeUser | null;
 }) {
-  const papel = user?.role === "superadmin" ? "COMANDANTE" : "INSTRUTOR";
+  const papel =
+    user?.role === "superadmin"
+      ? "COMANDANTE"
+      : user?.role === "monitor"
+      ? "MONITOR"
+      : "INSTRUTOR";
   const turmaLbl = user?.turma
     ? `${user.turma.codigo} · ${user.turma.apelido}`
     : null;
@@ -1147,7 +1152,7 @@ function UsuariosTab({
   const [usuarios, setUsuarios] = useState<import("./types").Usuario[]>([]);
   const [nome, setNome] = useState("");
   const [senha, setSenha] = useState("");
-  const [role, setRole] = useState<"superadmin" | "instrutor">("instrutor");
+  const [role, setRole] = useState<import("./types").Papel>("instrutor");
   const [turmaId, setTurmaId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -1172,7 +1177,7 @@ function UsuariosTab({
       setNome("");
       setSenha("");
       setTurmaId("");
-      setRole("instrutor");
+      setRole("instrutor" as import("./types").Papel);
       carregar();
     } catch (e) {
       onErro((e as Error).message);
@@ -1237,12 +1242,11 @@ function UsuariosTab({
           />
           <select
             value={role}
-            onChange={(e) =>
-              setRole(e.target.value === "superadmin" ? "superadmin" : "instrutor")
-            }
+            onChange={(e) => setRole(e.target.value as import("./types").Papel)}
             className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
           >
             <option value="instrutor">Instrutor</option>
+            <option value="monitor">Monitor</option>
             <option value="superadmin">Comandante</option>
           </select>
           <select
@@ -1284,10 +1288,16 @@ function UsuariosTab({
                 className={`text-[9px] px-1.5 py-0.5 tracking-wide shrink-0 ${
                   u.role === "superadmin"
                     ? "bg-amareloMil text-preto"
+                    : u.role === "monitor"
+                    ? "border border-verdeBrilho text-verdeBrilho"
                     : "border border-areia text-areia"
                 }`}
               >
-                {u.role === "superadmin" ? "COMANDANTE" : "INSTRUTOR"}
+                {u.role === "superadmin"
+                  ? "COMANDANTE"
+                  : u.role === "monitor"
+                  ? "MONITOR"
+                  : "INSTRUTOR"}
               </span>
             </span>
             <span className="flex items-center gap-2">

@@ -55,7 +55,7 @@ export interface Instrutor {
   nome: string;
 }
 
-export type Papel = "superadmin" | "instrutor";
+export type Papel = "superadmin" | "instrutor" | "monitor";
 
 export interface MeUser {
   username: string;

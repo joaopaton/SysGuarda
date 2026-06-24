@@ -39,7 +39,7 @@ Modelos-chave (`server/prisma/schema.prisma`):
 - `Person` — efetivo. `isMonitor` (monitor só comanda; monitores são **TG-wide, sem turma**), `turmaId` (guardas pertencem a uma turma), `active` (soft-delete), `available` (false = doente/afastado, sai do sorteio). **A identidade é `(num, nome)`** porque um mesmo `num` pode existir em dois registros — daí `keyOf(p) = num + nome` ser usado em todo lugar.
 - `Schedule` + `Assignment` — uma escala (de uma `turmaId`) e suas vagas (`dayIndex`, `funcao`, `slot`). Assignment guarda *snapshot* `personNum`/`personNome` e um vínculo opcional a `Person` (`---`/`VAZIO` para vaga vazia).
 - `ManualHistory` — histórico importado à mão, somado ao histórico das escalas salvas para balancear o sorteio.
-- `User` — login (senha com hash scrypt, `server/src/password.ts`). `role` = `superadmin` (Comandante) | `instrutor` (Sgt); `turmaId` vincula o instrutor à turma. `Instructor` (sobreaviso) e `AditamentoConfig` (linha única `id="singleton"`) servem ao Aditamento.
+- `User` — login (senha com hash scrypt, `server/src/password.ts`). `role` = `superadmin` (Comandante) | `instrutor` (Sgt) | `monitor` (mesmo acesso do instrutor, escopo da turma — só muda o rótulo); `turmaId` vincula à turma. `normalizarPapel` (em `auth.ts`) é a fonte única de validação do papel. `Instructor` (sobreaviso) e `AditamentoConfig` (linha única `id="singleton"`) servem ao Aditamento.
 
 ## Algoritmo de geração (`server/src/generate.ts`)
 

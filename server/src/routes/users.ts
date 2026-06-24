@@ -2,14 +2,11 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { hashPassword } from "../password.js";
 import { str } from "../scope.js";
+import { normalizarPapel as papelValido } from "../auth.js";
 
 export const usersRouter = Router();
 
 const incluirTurma = { turma: { select: { codigo: true, apelido: true } } };
-
-function papelValido(role: string): "superadmin" | "instrutor" {
-  return role === "superadmin" ? "superadmin" : "instrutor";
-}
 
 async function turmaValida(turmaId: string | null): Promise<boolean> {
   if (!turmaId) return true;

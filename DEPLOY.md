@@ -118,12 +118,14 @@ pm2 restart sysguarda
 
 - O `npm run prod:seed` cria as **turmas** (T1 Caveira, T2 Pantera, T3 Cães de
   Guerra, T4 Aço) e as **contas**: `mario` (Comandante/superadmin, T3), `lucas`
-  (T1), `schutz` (T2), `robson` (T4), além de promover o usuário do `.env`
-  (`APP_USER`) a superadmin de socorro.
+  (instrutor T1), `schutz` (instrutor T2), `robson` (instrutor T4), `corneto`
+  (monitor T2), além de promover o usuário do `.env` (`APP_USER`) a superadmin
+  de socorro.
 - **Senha inicial** das contas novas: `SEED_PASSWORD` (env) ou `mudar123`. O seed
   **não** sobrescreve senha de quem já existe. Troque no 1º acesso (aba USUÁRIOS,
   só o Comandante vê).
-- **Papéis**: superadmin (Comandante) vê/gerencia tudo; instrutor só a sua turma.
+- **Papéis**: superadmin (Comandante) vê/gerencia tudo; instrutor e monitor têm
+  o mesmo acesso, restrito à sua turma.
   Após esta atualização, rode `npm run prod:db` (schema mudou) **e** `npm run
   prod:seed` uma vez. Depois o Comandante deve atribuir cada guarda a uma turma
   (aba EFETIVO) — guardas sem turma não entram na geração de nenhuma turma.

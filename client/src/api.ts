@@ -4,6 +4,7 @@ import type {
   EscalaDTO,
   Instrutor,
   MeUser,
+  Papel,
   Person,
   Turma,
   Usuario,
@@ -42,7 +43,7 @@ export const api = {
   addUser: (
     username: string,
     password: string,
-    role: "superadmin" | "instrutor",
+    role: Papel,
     turmaId: string | null
   ) =>
     req<Usuario>("/api/users", {
@@ -56,7 +57,7 @@ export const api = {
     }),
   updateUser: (
     id: string,
-    patch: { role?: "superadmin" | "instrutor"; turmaId?: string | null }
+    patch: { role?: Papel; turmaId?: string | null }
   ) =>
     req<{ ok: boolean }>(`/api/users/${id}`, {
       method: "PATCH",

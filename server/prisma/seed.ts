@@ -72,6 +72,7 @@ const CONTAS = [
   { username: "lucas", role: "instrutor", turma: "T1" }, // Sgt Lucas
   { username: "schutz", role: "instrutor", turma: "T2" }, // Sgt Schütz
   { username: "robson", role: "instrutor", turma: "T4" }, // Sgt Robson
+  { username: "corneto", role: "monitor", turma: "T2" }, // Monitor da T2
 ];
 
 async function main() {

@@ -5,7 +5,14 @@ import { prisma } from "./prisma.js";
 const COOKIE = "sg_session";
 const VALIDADE_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
-export type Papel = "superadmin" | "instrutor";
+export type Papel = "superadmin" | "instrutor" | "monitor";
+
+/** Normaliza a string de papel vinda do banco. */
+export function normalizarPapel(role: string): Papel {
+  if (role === "superadmin") return "superadmin";
+  if (role === "monitor") return "monitor";
+  return "instrutor";
+}
 
 export interface SessionUser {
   uid: string;
@@ -96,7 +103,7 @@ export async function usuarioDaSessao(req: Request): Promise<SessionUser | null>
   return {
     uid: u.id,
     username: u.username,
-    role: u.role === "superadmin" ? "superadmin" : "instrutor",
+    role: normalizarPapel(u.role),
     turmaId: u.turmaId,
   };
 }
