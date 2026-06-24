@@ -1,7 +1,10 @@
 // Parser tolerante de uma escala em CSV -> EscalaDTO (p/ gerar o Aditamento).
-// Aceita o próprio CSV exportado pelo app (grade FUNÇÃO × DIA, células "NUM NOME")
-// e variações: separador `;`, `,` ou tab, com ou sem BOM, rótulo da função só na
-// primeira vaga (linhas seguintes herdam a função), datas "DD/MM" ou "DD/MM/AAAA".
+// Aceita o CSV exportado pelo app (grade FUNÇÃO × DIA, células "NUM NOME") e a
+// planilha de previsão (Google Sheets), que tem colunas vazias antes dos dias,
+// datas com mês por extenso ("30/jun.") e o rótulo da função só na 1ª vaga.
+//
+// Estratégia: detecta em qual COLUNA fica cada dia (pelo cabeçalho) e lê os dados
+// exatamente nessas colunas — assim colunas vazias no meio não desalinham nada.
 
 import { FUNCOES, type DiaEscala, type Funcao, type Pessoa } from "./types";
 
@@ -13,7 +16,15 @@ export interface EscalaImportada {
   escala: DiaEscala[];
 }
 
-/** Casa o rótulo da 1ª coluna com uma das funções conhecidas (tolerante). */
+// "DD/MM" ou "DD/mmm" (mês numérico ou por extenso, pt-BR).
+const DIA_RE = /^\s*"?\s*\d{1,2}\/(\d{1,2}|[a-zà-ú]{3,})/i;
+
+const MESES: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
+/** Casa o rótulo da função com uma das funções conhecidas (tolerante). */
 function acharFuncao(label: string): Funcao | null {
   const n = label.trim().toLowerCase();
   if (!n) return null;
@@ -31,19 +42,30 @@ function lerPessoa(cell: string): Pessoa | null {
   if (!t || /vazio/i.test(t) || /^-+$/.test(t.replace(/\s+/g, ""))) return null;
   const m = t.match(/^(\d{2,4})\s+(.+?)\s*$/);
   if (m) return { num: m[1], nome: m[2].toUpperCase() };
-  // sem número: aceita apenas se parecer um nome (letras, sem dígitos/pontuação estranha)
   if (/^[A-Za-zÀ-ÿ.'\- ]{3,}$/.test(t)) return { num: "---", nome: t.toUpperCase() };
   return null;
 }
 
-/** "DD/MM" ou "DD/MM/AAAA" -> ISO (meio-dia local, evita off-by-one de fuso). */
-function parseDataISO(label: string, anoFallback: number): string | null {
-  const m = label.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
-  if (!m) return null;
-  const dd = +m[1];
-  const mm = +m[2];
-  let yyyy = m[3] ? +m[3] : anoFallback;
-  if (yyyy < 100) yyyy += 2000;
+/** "DD/MM[/AAAA]" ou "DD/mmm" -> ISO (meio-dia local, evita off-by-one de fuso). */
+function parseDataISO(label: string, ano: number): string | null {
+  const t = label.trim();
+  let dd: number | undefined;
+  let mm: number | undefined;
+  let yyyy = ano;
+
+  const num = t.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (num) {
+    dd = +num[1];
+    mm = +num[2];
+    if (num[3]) yyyy = +num[3] < 100 ? 2000 + +num[3] : +num[3];
+  } else {
+    const ext = t.match(/(\d{1,2})\/([a-zà-ú]{3,})/i);
+    if (ext) {
+      dd = +ext[1];
+      mm = MESES[ext[2].slice(0, 3).toLowerCase()];
+    }
+  }
+  if (!dd || !mm) return null;
   return new Date(yyyy, mm - 1, dd, 12, 0, 0).toISOString();
 }
 
@@ -51,25 +73,26 @@ export function parseEscalaCsv(texto: string): EscalaImportada {
   const limpo = texto.replace(/^﻿/, "");
   const matriz = limpo.split(/\r?\n/).map((l) => l.split(SEP));
 
-  // 1) acha o cabeçalho: 1ª coluna ~ "FUNÇÃO" ...
-  let headerIdx = matriz.findIndex((r) => /fun[çc]/i.test((r[0] || "").trim()));
-  // ... ou, na falta, uma linha com 2+ células de data.
+  // Ano: pega o 1º "20xx" que aparecer no arquivo (ex.: "... de 2026").
+  const anoMatch = limpo.match(/\b(20\d{2})\b/);
+  const ano = anoMatch ? +anoMatch[1] : new Date().getFullYear();
+
+  // Cabeçalho = primeira linha com 2+ células que parecem data.
+  const headerIdx = matriz.findIndex(
+    (r) => r.filter((c) => DIA_RE.test(c)).length >= 2
+  );
   if (headerIdx === -1) {
-    headerIdx = matriz.findIndex(
-      (r) => r.filter((c) => /\d{1,2}\/\d{1,2}/.test(c)).length >= 2
-    );
-  }
-  if (headerIdx === -1) {
-    throw new Error("CSV inválido: não encontrei o cabeçalho de dias (FUNÇÃO;DIA…).");
+    throw new Error("CSV inválido: não encontrei a linha de datas (ex.: 30/jun.).");
   }
 
-  const dias = matriz[headerIdx]
-    .slice(1)
-    .map((d) => d.trim().replace(/^"|"$/g, ""))
-    .filter((d) => d);
-  if (dias.length === 0) {
-    throw new Error("CSV inválido: nenhuma coluna de dia no cabeçalho.");
-  }
+  // Em QUAIS colunas estão os dias — usadas também para ler os dados.
+  const header = matriz[headerIdx];
+  const dayCols: number[] = [];
+  header.forEach((c, i) => {
+    if (DIA_RE.test(c)) dayCols.push(i);
+  });
+  const dias = dayCols.map((i) => header[i].trim().replace(/^"|"$/g, ""));
+  const primeiraDataCol = dayCols[0];
 
   const escala: DiaEscala[] = Array.from({ length: dias.length }, () => ({
     "Cmt Gd TG": [],
@@ -81,23 +104,22 @@ export function parseEscalaCsv(texto: string): EscalaImportada {
   let atual: Funcao | null = null;
   for (let i = headerIdx + 1; i < matriz.length; i++) {
     const row = matriz[i];
-    const f = acharFuncao(row[0] || "");
+    // Rótulo da função: 1ª célula não-vazia antes da 1ª coluna de dia.
+    const label = row.slice(0, primeiraDataCol).find((c) => c.trim()) || "";
+    const f = acharFuncao(label);
     if (f) atual = f;
-    if (!atual) continue; // ainda não entrou em nenhuma função
-    for (let d = 0; d < dias.length; d++) {
-      const p = lerPessoa(row[d + 1] || "");
-      if (p) escala[d][atual].push(p);
-    }
+    if (!atual) continue;
+    dayCols.forEach((col, d) => {
+      const p = lerPessoa(row[col] || "");
+      if (p) escala[d][atual!].push(p);
+    });
   }
 
-  const temGente = escala.some((dia) =>
-    FUNCOES.some((f) => dia[f].length > 0)
-  );
+  const temGente = escala.some((dia) => FUNCOES.some((f) => dia[f].length > 0));
   if (!temGente) {
     throw new Error("CSV lido, mas nenhuma pessoa foi encontrada nas células.");
   }
 
-  const startDate =
-    parseDataISO(dias[0], new Date().getFullYear()) ?? new Date().toISOString();
+  const startDate = parseDataISO(dias[0], ano) ?? new Date().toISOString();
   return { startDate, dias, escala };
 }
