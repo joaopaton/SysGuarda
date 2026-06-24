@@ -36,9 +36,11 @@ import {
   RotateCw,
   Gem,
   CircleUserRound,
+  Archive,
+  FolderOpen,
 } from "lucide-react";
 
-type Aba = "escala" | "guardas" | "config" | "usuarios";
+type Aba = "escala" | "guardas" | "config" | "usuarios" | "salvas";
 type Editando = { dia: number; func: (typeof FUNCOES)[number]; idx: number } | null;
 
 function proximaTercaISO(): string {
@@ -64,6 +66,8 @@ export default function App({ onLogout }: { onLogout: () => void }) {
   const [histCount, setHistCount] = useState(0);
   const [histMsg, setHistMsg] = useState<string | null>(null);
   const [showAditamento, setShowAditamento] = useState(false);
+  // id da escala salva atualmente aberta (null = escala nova, ainda não salva).
+  const [scheduleId, setScheduleId] = useState<string | null>(null);
 
   const carregarEfetivo = useCallback(async () => {
     try {
@@ -115,9 +119,11 @@ export default function App({ onLogout }: { onLogout: () => void }) {
 
   const gerar = useCallback(async () => {
     setErro(null);
+    setMsg(null);
     try {
       const novo = await api.generate(inicio, balancear);
       setDto(novo);
+      setScheduleId(null); // escala nova, ainda não salva
       setAba("escala");
     } catch (e) {
       setErro((e as Error).message);
@@ -132,8 +138,23 @@ export default function App({ onLogout }: { onLogout: () => void }) {
       const texto = await file.text();
       const imp = parseEscalaCsv(texto);
       setDto({ ...imp, balanceado: false });
+      setScheduleId(null); // escala nova, ainda não salva
       setAba("escala");
       setShowAditamento(true);
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }, []);
+
+  // Abre uma escala salva no editor.
+  const abrirEscala = useCallback(async (id: string) => {
+    setErro(null);
+    setMsg(null);
+    try {
+      const e = await api.get(id);
+      setDto(e);
+      setScheduleId(id);
+      setAba("escala");
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -181,9 +202,16 @@ export default function App({ onLogout }: { onLogout: () => void }) {
     if (!dto) return;
     setSalvando(true);
     setMsg(null);
+    setErro(null);
     try {
-      await api.save(dto.startDate, dto.escala);
-      setMsg("Escala salva no banco — já entra no balanceamento futuro.");
+      if (scheduleId) {
+        await api.update(scheduleId, dto.startDate, dto.escala);
+        setMsg("Escala atualizada no banco.");
+      } else {
+        const r = await api.save(dto.startDate, dto.escala);
+        setScheduleId(r.id);
+        setMsg("Escala salva no banco — já entra no balanceamento futuro.");
+      }
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -264,6 +292,16 @@ export default function App({ onLogout }: { onLogout: () => void }) {
             onHistorico={baixarHistorico}
             onAditamento={() => setShowAditamento(true)}
             onImportarEscala={importarEscalaCsv}
+            onVerSalvas={() => setAba("salvas")}
+            salvoId={scheduleId}
+          />
+        )}
+
+        {aba === "salvas" && (
+          <SalvasTab
+            currentId={scheduleId}
+            onAbrir={abrirEscala}
+            onErro={setErro}
           />
         )}
 
@@ -321,6 +359,7 @@ function Header({ onLogout }: { onLogout: () => void }) {
 function Tabs({ aba, setAba }: { aba: Aba; setAba: (a: Aba) => void }) {
   const tabs: [Aba, string, typeof CalendarDays][] = [
     ["escala", "ESCALA", CalendarDays],
+    ["salvas", "SALVAS", Archive],
     ["guardas", "EFETIVO", Users],
     ["config", "COMANDO", Settings],
     ["usuarios", "USUÁRIOS", UserCog],
@@ -683,6 +722,8 @@ function EscalaTab({
   onHistorico,
   onAditamento,
   onImportarEscala,
+  onVerSalvas,
+  salvoId,
 }: {
   dto: EscalaDTO | null;
   monitores: Person[];
@@ -703,6 +744,8 @@ function EscalaTab({
   onHistorico: () => void;
   onAditamento: () => void;
   onImportarEscala: (file: File) => void;
+  onVerSalvas: () => void;
+  salvoId: string | null;
 }) {
   if (!dto) {
     return (
@@ -717,6 +760,12 @@ function EscalaTab({
             className="w-full sm:w-auto bg-amareloMil text-preto px-7 py-3 font-bold text-sm tracking-[2px] font-estencil inline-flex items-center justify-center gap-2"
           >
             <Settings size={16} /> IR AO COMANDO
+          </button>
+          <button
+            onClick={onVerSalvas}
+            className="w-full sm:w-auto bg-transparent border border-amareloMil text-amareloMil px-7 py-3 font-bold text-sm tracking-[2px] font-mono inline-flex items-center justify-center gap-2"
+          >
+            <Archive size={16} /> ESCALAS SALVAS
           </button>
           <label className="w-full sm:w-auto bg-transparent border border-amareloMil text-amareloMil px-7 py-3 font-bold text-sm tracking-[2px] font-mono cursor-pointer inline-flex items-center justify-center gap-2">
             <Upload size={16} /> ADITAMENTO VIA CSV
@@ -749,10 +798,20 @@ function EscalaTab({
             ESCALA EM VIGOR
           </h2>
           <p className="mt-1 text-areia text-[11px] font-mono">
-            &gt; TOQUE NO NOME PARA SUBSTITUIR
+            {salvoId ? (
+              <span className="text-verdeBrilho inline-flex items-center gap-1.5">
+                <Archive size={12} /> EDITANDO ESCALA SALVA · &gt; TOQUE NO NOME
+                PARA SUBSTITUIR
+              </span>
+            ) : (
+              <>&gt; TOQUE NO NOME PARA SUBSTITUIR</>
+            )}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <BtnAcao onClick={onVerSalvas} variant="outline">
+            <Archive size={14} /> SALVAS
+          </BtnAcao>
           <BtnAcao onClick={onReembaralhar} variant="outline">
             <Shuffle size={14} /> REEMBARALHAR
           </BtnAcao>
@@ -775,7 +834,8 @@ function EscalaTab({
             <Download size={14} /> HISTÓRICO
           </BtnAcao>
           <BtnAcao onClick={onSalvar} variant="amarelo">
-            <Save size={14} /> {salvando ? "SALVANDO…" : "SALVAR"}
+            <Save size={14} />{" "}
+            {salvando ? "SALVANDO…" : salvoId ? "ATUALIZAR" : "SALVAR"}
           </BtnAcao>
         </div>
       </div>
@@ -1017,6 +1077,127 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
       </div>
       <p className="text-areia text-[11px] mt-4 font-mono">
         &gt; {usuarios.length} USUÁRIO(S) ATIVO(S).
+      </p>
+    </div>
+  );
+}
+
+function SalvasTab({
+  currentId,
+  onAbrir,
+  onErro,
+}: {
+  currentId: string | null;
+  onAbrir: (id: string) => void;
+  onErro: (e: string | null) => void;
+}) {
+  const [lista, setLista] = useState<
+    { id: string; startDate: string; createdAt: string }[]
+  >([]);
+  const [carregando, setCarregando] = useState(true);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      setLista(await api.list());
+    } catch (e) {
+      onErro((e as Error).message);
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const excluir = async (id: string) => {
+    onErro(null);
+    if (!confirm("Excluir esta escala salva? Esta ação não pode ser desfeita."))
+      return;
+    try {
+      await api.remove(id);
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  const periodo = (iso: string) => {
+    const ini = new Date(iso);
+    const fim = new Date(ini);
+    fim.setDate(ini.getDate() + 6);
+    return `${fmt(ini.toISOString())} → ${fmt(fim.toISOString())}`;
+  };
+
+  return (
+    <div className="max-w-[680px]">
+      <div className="bg-olivaEsc border border-amareloMil p-5 mb-5">
+        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+          <Archive size={16} /> ESCALAS SALVAS
+        </h2>
+        <p className="m-0 text-[11px] text-areia font-mono">
+          &gt; ABRA PARA VISUALIZAR/EDITAR. AO SALVAR, A MESMA ESCALA É
+          ATUALIZADA.
+        </p>
+      </div>
+
+      {carregando ? (
+        <p className="text-areia text-[12px] font-mono">CARREGANDO…</p>
+      ) : lista.length === 0 ? (
+        <p className="text-areia text-[12px] font-mono">
+          &gt; NENHUMA ESCALA SALVA AINDA. GERE OU IMPORTE UMA E TOQUE EM SALVAR.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {lista.map((s) => (
+            <div
+              key={s.id}
+              className={`bg-olivaEsc border px-3 py-3 flex items-center justify-between gap-3 font-mono flex-wrap ${
+                s.id === currentId ? "border-amareloMil" : "border-linha"
+              }`}
+            >
+              <div className="min-w-0">
+                <div className="text-[13px] text-caquiClaro flex items-center gap-2">
+                  <CalendarDays size={14} className="text-amareloMil shrink-0" />
+                  {periodo(s.startDate)}
+                  {s.id === currentId && (
+                    <span className="text-[9px] text-verdeBrilho border border-verdeBrilho px-1.5 py-0.5 tracking-wide">
+                      EM EDIÇÃO
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-areia mt-1">
+                  &gt; SALVA EM {fmt(s.createdAt)}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => onAbrir(s.id)}
+                  className="bg-amareloMil text-preto px-3 py-1.5 text-[11px] font-bold tracking-wide inline-flex items-center gap-1.5"
+                >
+                  <FolderOpen size={13} /> ABRIR
+                </button>
+                <button
+                  onClick={() => excluir(s.id)}
+                  title="Excluir"
+                  className="text-vermelho leading-none"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-areia text-[11px] mt-4 font-mono">
+        &gt; {lista.length} ESCALA(S) SALVA(S).
       </p>
     </div>
   );

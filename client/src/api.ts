@@ -80,6 +80,15 @@ export const api = {
 
   get: (id: string) => req<EscalaDTO>(`/api/schedule/${id}`),
 
+  update: (id: string, startDate: string, escala: DiaEscala[]) =>
+    req<{ id: string }>(`/api/schedule/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ startDate, escala }),
+    }),
+
+  remove: (id: string) =>
+    req<void>(`/api/schedule/${id}`, { method: "DELETE" }),
+
   history: (id: string) =>
     req<{ num: string; nome: string; guardas: number }[]>(
       `/api/schedule/${id}/history`

@@ -75,6 +75,26 @@ scheduleRouter.post("/generate", async (req, res) => {
   });
 });
 
+// Monta os registros de Assignment a partir da escala + efetivo atual.
+async function assignmentsData(escala: Escala) {
+  const { byKey } = await efetivoAtivo();
+  return escala.flatMap((dia, dayIndex) =>
+    FUNCOES.flatMap((func: Funcao) =>
+      (dia[func] || []).map((p, slot) => {
+        const person = byKey.get(keyOf(p));
+        return {
+          dayIndex,
+          funcao: func,
+          slot,
+          personId: person?.id ?? null,
+          personNum: p.num,
+          personNome: p.nome,
+        };
+      })
+    )
+  );
+}
+
 // POST /api/schedule  { startDate, escala }  -> persiste a escala
 scheduleRouter.post("/", async (req, res) => {
   const { startDate, escala } = req.body ?? {};
@@ -82,31 +102,41 @@ scheduleRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "startDate e escala são obrigatórios" });
   }
   const inicio = ajustarParaTerca(new Date(startDate));
-  const { byKey } = await efetivoAtivo();
-
   const created = await prisma.schedule.create({
     data: {
       startDate: inicio,
-      assignments: {
-        create: (escala as Escala).flatMap((dia, dayIndex) =>
-          FUNCOES.flatMap((func: Funcao) =>
-            (dia[func] || []).map((p, slot) => {
-              const person = byKey.get(keyOf(p));
-              return {
-                dayIndex,
-                funcao: func,
-                slot,
-                personId: person?.id ?? null,
-                personNum: p.num,
-                personNome: p.nome,
-              };
-            })
-          )
-        ),
-      },
+      assignments: { create: await assignmentsData(escala as Escala) },
     },
   });
   res.status(201).json({ id: created.id });
+});
+
+// PUT /api/schedule/:id  { startDate, escala }  -> atualiza escala existente
+scheduleRouter.put("/:id", async (req, res) => {
+  const { startDate, escala } = req.body ?? {};
+  if (!startDate || !Array.isArray(escala)) {
+    return res.status(400).json({ error: "startDate e escala são obrigatórios" });
+  }
+  const existe = await prisma.schedule.findUnique({ where: { id: req.params.id } });
+  if (!existe) return res.status(404).json({ error: "não encontrada" });
+
+  const inicio = ajustarParaTerca(new Date(startDate));
+  const data = await assignmentsData(escala as Escala);
+  // Troca todas as vagas: apaga as antigas e recria.
+  await prisma.$transaction([
+    prisma.assignment.deleteMany({ where: { scheduleId: req.params.id } }),
+    prisma.schedule.update({
+      where: { id: req.params.id },
+      data: { startDate: inicio, assignments: { create: data } },
+    }),
+  ]);
+  res.json({ id: req.params.id });
+});
+
+// DELETE /api/schedule/:id  -> remove a escala (assignments em cascata)
+scheduleRouter.delete("/:id", async (req, res) => {
+  await prisma.schedule.delete({ where: { id: req.params.id } }).catch(() => {});
+  res.status(204).end();
 });
 
 // GET /api/schedule -> lista escalas salvas
