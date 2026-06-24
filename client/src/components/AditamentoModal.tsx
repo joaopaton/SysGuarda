@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { AditamentoConfig, DiaEscala, Instrutor } from "../types";
 import { buildAditamentoHTML, imprimirAditamento } from "../aditamento";
+import { FileText, X, AlertTriangle, Gem, Plus, Printer } from "lucide-react";
 
 interface Props {
   startDate: string;
@@ -85,20 +86,20 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px]">
-            📄 GERAR ADITAMENTO
+          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+            <FileText size={17} /> GERAR ADITAMENTO
           </h2>
           <button
             onClick={onClose}
-            className="text-areia text-xl leading-none hover:text-vermelho"
+            className="text-areia leading-none hover:text-vermelho"
           >
-            ✕
+            <X size={20} />
           </button>
         </div>
 
         {erro && (
-          <div className="mb-3 border border-vermelho bg-vermelho/20 text-caquiClaro px-3 py-2 text-xs font-mono">
-            ⚠ {erro}
+          <div className="mb-3 border border-vermelho bg-vermelho/20 text-caquiClaro px-3 py-2 text-xs font-mono flex items-center gap-2">
+            <AlertTriangle size={14} className="shrink-0" /> {erro}
           </div>
         )}
 
@@ -149,8 +150,8 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
 
         {/* Instrutor de Sobreaviso por dia */}
         <div className="mb-4">
-          <h3 className="text-[11px] text-verdeBrilho tracking-[2px] font-mono mb-2">
-            ◆ INSTRUTOR DE SOBREAVISO (POR DIA)
+          <h3 className="text-[11px] text-verdeBrilho tracking-[2px] font-mono mb-2 flex items-center gap-1.5">
+            <Gem size={13} /> INSTRUTOR DE SOBREAVISO (POR DIA)
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
             {dias.map((dia, i) => (
@@ -192,9 +193,9 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
               />
               <button
                 onClick={addSgt}
-                className="bg-verdeMil text-caquiClaro px-3 py-1.5 text-[11px] font-bold font-mono whitespace-nowrap"
+                className="bg-verdeMil text-caquiClaro px-3 py-1.5 text-[11px] font-bold font-mono whitespace-nowrap inline-flex items-center gap-1"
               >
-                + ADD
+                <Plus size={13} /> ADD
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -206,9 +207,9 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
                   {ins.nome}
                   <button
                     onClick={() => removeSgt(ins.id)}
-                    className="text-vermelho"
+                    className="text-vermelho inline-flex items-center"
                   >
-                    ✕
+                    <X size={12} />
                   </button>
                 </span>
               ))}
@@ -261,9 +262,9 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
           </button>
           <button
             onClick={gerar}
-            className="bg-amareloMil text-preto px-5 py-2 text-xs font-bold tracking-wide font-mono"
+            className="bg-amareloMil text-preto px-5 py-2 text-xs font-bold tracking-wide font-mono inline-flex items-center gap-1.5"
           >
-            ⎙ GERAR PDF
+            <Printer size={14} /> GERAR PDF
           </button>
         </div>
       </div>

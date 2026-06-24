@@ -12,6 +12,31 @@ import { SeletorPessoa } from "./components/SeletorPessoa";
 import { AditamentoModal } from "./components/AditamentoModal";
 import { exportarEscalaCSV, exportarHistoricoCSV, exportarPDF } from "./export";
 import { parseEscalaCsv } from "./parseEscalaCsv";
+import {
+  Star,
+  LogOut,
+  CalendarDays,
+  Users,
+  Settings,
+  UserCog,
+  Scale,
+  Upload,
+  Download,
+  Flag,
+  FileText,
+  FileSpreadsheet,
+  Printer,
+  Shuffle,
+  Save,
+  Plus,
+  Check,
+  X,
+  Trash2,
+  AlertTriangle,
+  RotateCw,
+  Gem,
+  CircleUserRound,
+} from "lucide-react";
 
 type Aba = "escala" | "guardas" | "config" | "usuarios";
 type Editando = { dia: number; func: (typeof FUNCOES)[number]; idx: number } | null;
@@ -189,8 +214,8 @@ export default function App({ onLogout }: { onLogout: () => void }) {
 
       <div className="max-w-[1100px] mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {erro && (
-          <div className="mb-4 border border-vermelho bg-vermelho/20 text-caquiClaro px-4 py-2 text-xs font-mono">
-            ⚠ {erro}
+          <div className="mb-4 border border-vermelho bg-vermelho/20 text-caquiClaro px-4 py-2 text-xs font-mono flex items-center gap-2">
+            <AlertTriangle size={14} className="shrink-0" /> {erro}
           </div>
         )}
 
@@ -265,8 +290,8 @@ function Header({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="bg-olivaEsc border-b-[3px] border-amareloMil px-4 sm:px-6 py-3 sm:py-[18px]">
       <div className="max-w-[1100px] mx-auto flex items-center gap-3 sm:gap-4">
-        <div className="w-11 h-11 sm:w-[52px] sm:h-[52px] border-2 border-amareloMil rounded-full flex items-center justify-center text-xl sm:text-2xl shrink-0 bg-oliva">
-          ★
+        <div className="w-11 h-11 sm:w-[52px] sm:h-[52px] border-2 border-amareloMil rounded-full flex items-center justify-center shrink-0 bg-oliva text-amareloMil">
+          <Star size={26} className="fill-amareloMil" />
         </div>
         <div className="min-w-0">
           <h1 className="m-0 text-lg sm:text-2xl font-bold text-caquiClaro font-estencil tracking-[2px] leading-tight">
@@ -283,9 +308,9 @@ function Header({ onLogout }: { onLogout: () => void }) {
           <button
             onClick={onLogout}
             title="Sair"
-            className="text-[10px] text-amareloMil border border-amareloMil/50 px-2 py-1 font-mono tracking-wide hover:bg-amareloMil hover:text-preto"
+            className="text-[10px] text-amareloMil border border-amareloMil/50 px-2 py-1 font-mono tracking-wide hover:bg-amareloMil hover:text-preto inline-flex items-center gap-1"
           >
-            ⏻ SAIR
+            <LogOut size={12} /> SAIR
           </button>
         </div>
       </div>
@@ -294,26 +319,26 @@ function Header({ onLogout }: { onLogout: () => void }) {
 }
 
 function Tabs({ aba, setAba }: { aba: Aba; setAba: (a: Aba) => void }) {
-  const tabs: [Aba, string][] = [
-    ["escala", "▣ ESCALA"],
-    ["guardas", "▤ EFETIVO"],
-    ["config", "▦ COMANDO"],
-    ["usuarios", "▥ USUÁRIOS"],
+  const tabs: [Aba, string, typeof CalendarDays][] = [
+    ["escala", "ESCALA", CalendarDays],
+    ["guardas", "EFETIVO", Users],
+    ["config", "COMANDO", Settings],
+    ["usuarios", "USUÁRIOS", UserCog],
   ];
   return (
     <div className="bg-olivaEsc border-b border-linha px-2 sm:px-6">
       <div className="max-w-[1100px] mx-auto flex overflow-x-auto">
-        {tabs.map(([id, label]) => (
+        {tabs.map(([id, label, Icon]) => (
           <button
             key={id}
             onClick={() => setAba(id)}
-            className={`px-3 sm:px-[22px] py-3 text-[12px] sm:text-[13px] font-semibold tracking-[1px] sm:tracking-[2px] font-mono border-b-[3px] whitespace-nowrap ${
+            className={`px-3 sm:px-[22px] py-3 text-[12px] sm:text-[13px] font-semibold tracking-[1px] sm:tracking-[2px] font-mono border-b-[3px] whitespace-nowrap inline-flex items-center gap-1.5 ${
               aba === id
                 ? "bg-oliva border-amareloMil text-amareloMil"
                 : "border-transparent text-areia"
             }`}
           >
-            {label}
+            <Icon size={15} /> {label}
           </button>
         ))}
       </div>
@@ -384,8 +409,8 @@ function ConfigTab({
               className="mt-0.5 accent-verdeBrilho"
             />
             <span>
-              <span className="text-[11px] text-verdeBrilho block tracking-[2px] font-mono">
-                ⚖ BALANCEAMENTO POR HISTÓRICO
+              <span className="text-[11px] text-verdeBrilho tracking-[2px] font-mono inline-flex items-center gap-1.5">
+                <Scale size={13} /> BALANCEAMENTO POR HISTÓRICO
               </span>
               <span className="text-[10px] text-areia font-mono leading-relaxed">
                 &gt; USA AS ESCALAS SALVAS + O HISTÓRICO IMPORTADO. QUEM FEZ MAIS
@@ -395,8 +420,8 @@ function ConfigTab({
           </label>
 
           <div className="bg-preto border border-dashed border-areia px-3 py-3">
-            <span className="text-[11px] text-areia block mb-1 tracking-[2px] font-mono">
-              ↥ IMPORTAR HISTÓRICO (PLANILHA / CSV)
+            <span className="text-[11px] text-areia mb-1 tracking-[2px] font-mono flex items-center gap-1.5">
+              <Upload size={13} /> IMPORTAR HISTÓRICO (PLANILHA / CSV)
             </span>
             <p className="text-[10px] text-areia font-mono leading-relaxed mb-2.5">
               &gt; SUBA A PLANILHA DA GUARDA DO MÊS (GRADE FUNÇÃO×DIA) OU UMA
@@ -433,34 +458,34 @@ function ConfigTab({
               {histCount > 0 && (
                 <button
                   onClick={onLimpar}
-                  className="bg-transparent border border-vermelho text-vermelho px-3 py-1.5 text-[11px] tracking-wide font-mono"
+                  className="bg-transparent border border-vermelho text-vermelho px-3 py-1.5 text-[11px] tracking-wide font-mono inline-flex items-center gap-1"
                 >
-                  ✕ LIMPAR ({histCount})
+                  <X size={12} /> LIMPAR ({histCount})
                 </button>
               )}
             </div>
             {histMsg && (
-              <p className="mt-2 text-[11px] text-amareloMil font-mono">
-                ✓ {histMsg}
+              <p className="mt-2 text-[11px] text-amareloMil font-mono flex items-center gap-1.5">
+                <Check size={12} /> {histMsg}
               </p>
             )}
             {histCount > 0 && !histMsg && (
-              <p className="mt-2 text-[11px] text-verdeBrilho font-mono">
-                ⚖ {histCount} pessoas no histórico importado.
+              <p className="mt-2 text-[11px] text-verdeBrilho font-mono flex items-center gap-1.5">
+                <Scale size={12} /> {histCount} pessoas no histórico importado.
               </p>
             )}
           </div>
 
           <button
             onClick={onGerar}
-            className="bg-amareloMil text-preto py-3.5 text-[15px] font-bold tracking-[2px] font-estencil"
+            className="bg-amareloMil text-preto py-3.5 text-[15px] font-bold tracking-[2px] font-estencil inline-flex items-center justify-center gap-2"
           >
-            ⚐ GERAR ESCALA
+            <Flag size={18} /> GERAR ESCALA
           </button>
 
           <div className="bg-preto border border-dashed border-amareloMil px-3 py-3">
-            <span className="text-[11px] text-amareloMil block mb-1 tracking-[2px] font-mono">
-              📄 ADITAMENTO A PARTIR DE CSV
+            <span className="text-[11px] text-amareloMil mb-1 tracking-[2px] font-mono flex items-center gap-1.5">
+              <FileText size={13} /> ADITAMENTO A PARTIR DE CSV
             </span>
             <p className="text-[10px] text-areia font-mono leading-relaxed mb-2.5">
               &gt; SUBA UMA ESCALA EM CSV (GRADE FUNÇÃO×DIA, CÉLULAS{" "}
@@ -468,8 +493,8 @@ function ConfigTab({
               DO BOTÃO <span className="text-amareloMil">CSV</span> DA ESCALA). ABRE
               O ADITAMENTO JÁ PREENCHIDO.
             </p>
-            <label className="inline-block bg-amareloMil text-preto px-3 py-1.5 text-[11px] font-bold cursor-pointer tracking-wide font-mono">
-              ↥ IMPORTAR ESCALA (CSV)
+            <label className="inline-flex items-center gap-1.5 bg-amareloMil text-preto px-3 py-1.5 text-[11px] font-bold cursor-pointer tracking-wide font-mono">
+              <Upload size={13} /> IMPORTAR ESCALA (CSV)
               <input
                 type="file"
                 accept=".csv,.txt,text/csv"
@@ -515,8 +540,8 @@ function EfetivoTab({
   return (
     <div>
       <div className="bg-olivaEsc border border-amareloMil p-5 mb-6">
-        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px]">
-          ◆ MONITORES — CMT GD TG
+        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+          <Gem size={16} /> MONITORES — CMT GD TG
         </h2>
         <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
           &gt; HABILITADOS A COMANDAR A GUARDA
@@ -535,8 +560,8 @@ function EfetivoTab({
       </div>
 
       <div className="bg-olivaEsc border border-linha p-5 mb-5">
-        <h2 className="m-0 mb-1 text-[15px] text-caquiClaro font-estencil tracking-[2px]">
-          ▣ EFETIVO DE GUARDA
+        <h2 className="m-0 mb-1 text-[15px] text-caquiClaro font-estencil tracking-[2px] flex items-center gap-2">
+          <Users size={16} /> EFETIVO DE GUARDA
         </h2>
         <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
           &gt; PERMANÊNCIA E GUARDAS DO TG
@@ -557,9 +582,9 @@ function EfetivoTab({
           />
           <button
             onClick={onAdicionar}
-            className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono"
+            className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
           >
-            + INCLUIR
+            <Plus size={15} /> INCLUIR
           </button>
         </div>
       </div>
@@ -579,7 +604,10 @@ function EfetivoTab({
         <span className={ausentes > 0 ? "text-vermelho" : "text-verdeBrilho"}>
           {ausentes} AUSENTE(S)
         </span>{" "}
-        — TOQUE NO ✓/✕ PARA MARCAR PRESENTE/AUSENTE.
+        — TOQUE NO{" "}
+        <Check size={12} className="inline align-[-2px] text-verdeBrilho" />/
+        <X size={12} className="inline align-[-2px] text-areia" /> PARA MARCAR
+        PRESENTE/AUSENTE.
       </p>
     </div>
   );
@@ -622,18 +650,18 @@ function Cartao({
         <button
           onClick={onToggle}
           title={ausente ? "Marcar presente" : "Marcar ausente (doente/afastado)"}
-          className={`text-base leading-none ${
+          className={`leading-none ${
             ausente ? "text-areia" : "text-verdeBrilho"
           }`}
         >
-          {ausente ? "✕" : "✓"}
+          {ausente ? <X size={16} /> : <Check size={16} />}
         </button>
         <button
           onClick={onRemover}
           title="Remover do efetivo"
-          className="text-vermelho text-base leading-none"
+          className="text-vermelho leading-none"
         >
-          🗑
+          <Trash2 size={15} />
         </button>
       </span>
     </div>
@@ -679,19 +707,19 @@ function EscalaTab({
   if (!dto) {
     return (
       <div className="text-center py-16 px-5">
-        <div className="text-5xl mb-3">⚐</div>
+        <Flag size={48} className="mx-auto mb-3 text-amareloMil" />
         <p className="text-caqui text-sm mb-6 tracking-wide font-mono">
           NENHUMA ESCALA EM VIGOR — EMITA A ORDEM DE SERVIÇO
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           <button
             onClick={onIrConfig}
-            className="w-full sm:w-auto bg-amareloMil text-preto px-7 py-3 font-bold text-sm tracking-[2px] font-estencil"
+            className="w-full sm:w-auto bg-amareloMil text-preto px-7 py-3 font-bold text-sm tracking-[2px] font-estencil inline-flex items-center justify-center gap-2"
           >
-            ▦ IR AO COMANDO
+            <Settings size={16} /> IR AO COMANDO
           </button>
-          <label className="w-full sm:w-auto text-center bg-transparent border border-amareloMil text-amareloMil px-7 py-3 font-bold text-sm tracking-[2px] font-mono cursor-pointer">
-            ↥ ADITAMENTO VIA CSV
+          <label className="w-full sm:w-auto bg-transparent border border-amareloMil text-amareloMil px-7 py-3 font-bold text-sm tracking-[2px] font-mono cursor-pointer inline-flex items-center justify-center gap-2">
+            <Upload size={16} /> ADITAMENTO VIA CSV
             <input
               type="file"
               accept=".csv,.txt,text/csv"
@@ -726,48 +754,50 @@ function EscalaTab({
         </div>
         <div className="flex gap-2 flex-wrap">
           <BtnAcao onClick={onReembaralhar} variant="outline">
-            ⟳ REEMBARALHAR
+            <Shuffle size={14} /> REEMBARALHAR
           </BtnAcao>
           <BtnAcao onClick={onAditamento} variant="amarelo">
-            📄 ADITAMENTO
+            <FileText size={14} /> ADITAMENTO
           </BtnAcao>
           <BtnAcao
             onClick={() => exportarPDF(dias, escala)}
             variant="vermelho"
           >
-            ⎙ PDF GRADE
+            <Printer size={14} /> PDF GRADE
           </BtnAcao>
           <BtnAcao
             onClick={() => exportarEscalaCSV(dias, escala)}
             variant="areia"
           >
-            ▤ CSV
+            <FileSpreadsheet size={14} /> CSV
           </BtnAcao>
           <BtnAcao onClick={onHistorico} variant="verde">
-            ↧ HISTÓRICO
+            <Download size={14} /> HISTÓRICO
           </BtnAcao>
           <BtnAcao onClick={onSalvar} variant="amarelo">
-            {salvando ? "SALVANDO…" : "💾 SALVAR"}
+            <Save size={14} /> {salvando ? "SALVANDO…" : "SALVAR"}
           </BtnAcao>
         </div>
       </div>
 
       {msg && (
-        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono">
-          ✓ {msg}
+        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono flex items-center gap-2">
+          <Check size={13} className="shrink-0" /> {msg}
         </div>
       )}
 
       {dto.balanceado && (
-        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono">
-          ⚖ BALANCEAMENTO ATIVO — SORTEIO AJUSTADO PELO HISTÓRICO SALVO.
+        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono flex items-center gap-2">
+          <Scale size={13} className="shrink-0" /> BALANCEAMENTO ATIVO — SORTEIO
+          AJUSTADO PELO HISTÓRICO SALVO.
         </div>
       )}
 
       {monitorRepete && (
-        <div className="bg-vermelho/20 border border-vermelho px-3.5 py-2.5 mb-4 text-xs text-caquiClaro font-mono">
-          ⚠ ATENÇÃO: {dias.length} DIAS PARA {monitoresDisp} MONITORES
-          DISPONÍVEIS — HAVERÁ REPETIÇÃO NO COMANDO.
+        <div className="bg-vermelho/20 border border-vermelho px-3.5 py-2.5 mb-4 text-xs text-caquiClaro font-mono flex items-center gap-2">
+          <AlertTriangle size={14} className="shrink-0" /> ATENÇÃO: {dias.length}{" "}
+          DIAS PARA {monitoresDisp} MONITORES DISPONÍVEIS — HAVERÁ REPETIÇÃO NO
+          COMANDO.
         </div>
       )}
 
@@ -922,8 +952,8 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
   return (
     <div className="max-w-[560px]">
       <div className="bg-olivaEsc border border-amareloMil p-5 mb-5">
-        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px]">
-          ▥ USUÁRIOS DE ACESSO
+        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+          <UserCog size={16} /> USUÁRIOS DE ACESSO
         </h2>
         <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
           &gt; QUEM PODE ENTRAR NO SISTEMA. SENHAS GUARDADAS CRIPTOGRAFADAS.
@@ -945,13 +975,15 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
           />
           <button
             onClick={adicionar}
-            className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono"
+            className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
           >
-            + CRIAR
+            <Plus size={15} /> CRIAR
           </button>
         </div>
         {msg && (
-          <p className="mt-2 text-[11px] text-amareloMil font-mono">✓ {msg}</p>
+          <p className="mt-2 text-[11px] text-amareloMil font-mono flex items-center gap-1.5">
+            <Check size={12} /> {msg}
+          </p>
         )}
       </div>
 
@@ -961,23 +993,23 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
             key={u.id}
             className="bg-olivaEsc border border-linha px-3 py-2.5 flex items-center justify-between font-mono"
           >
-            <span className="text-[13px] text-caquiClaro">
-              <span className="text-amareloMil mr-2">◉</span>
+            <span className="text-[13px] text-caquiClaro inline-flex items-center gap-2">
+              <CircleUserRound size={15} className="text-amareloMil" />
               {u.username}
             </span>
             <span className="flex items-center gap-2">
               <button
                 onClick={() => redefinir(u.id, u.username)}
-                className="text-[10px] text-areia border border-linha px-2 py-0.5 hover:text-amareloMil"
+                className="text-[10px] text-areia border border-linha px-2 py-0.5 hover:text-amareloMil inline-flex items-center gap-1"
               >
-                ⟳ SENHA
+                <RotateCw size={11} /> SENHA
               </button>
               <button
                 onClick={() => remover(u.id, u.username)}
-                className="text-vermelho text-base leading-none"
+                className="text-vermelho leading-none"
                 title="Remover"
               >
-                🗑
+                <Trash2 size={15} />
               </button>
             </span>
           </div>
@@ -1009,7 +1041,7 @@ function BtnAcao({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 font-bold text-xs tracking-wide font-mono ${styles[variant]}`}
+      className={`px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5 ${styles[variant]}`}
     >
       {children}
     </button>

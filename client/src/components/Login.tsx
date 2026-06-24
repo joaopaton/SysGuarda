@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import { Star, AlertTriangle, Flag } from "lucide-react";
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [usuario, setUsuario] = useState("");
@@ -28,8 +29,8 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         className="w-full max-w-[360px] bg-olivaEsc border border-amareloMil p-7"
       >
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-11 h-11 border-2 border-amareloMil rounded-full flex items-center justify-center text-xl bg-oliva shrink-0">
-            ★
+          <div className="w-11 h-11 border-2 border-amareloMil rounded-full flex items-center justify-center bg-oliva shrink-0 text-amareloMil">
+            <Star size={22} className="fill-amareloMil" />
           </div>
           <div>
             <h1 className="m-0 text-lg font-bold text-caquiClaro font-estencil tracking-[2px]">
@@ -43,8 +44,8 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         <div className="h-0.5 my-4 bg-[repeating-linear-gradient(90deg,#d4b942_0_10px,transparent_10px_18px)]" />
 
         {erro && (
-          <div className="mb-3 border border-vermelho bg-vermelho/20 text-caquiClaro px-3 py-2 text-xs font-mono">
-            ⚠ {erro}
+          <div className="mb-3 border border-vermelho bg-vermelho/20 text-caquiClaro px-3 py-2 text-xs font-mono flex items-center gap-2">
+            <AlertTriangle size={14} className="shrink-0" /> {erro}
           </div>
         )}
 
@@ -71,9 +72,9 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="submit"
           disabled={enviando}
-          className="w-full bg-amareloMil text-preto py-3 text-sm font-bold tracking-[2px] font-estencil disabled:opacity-60"
+          className="w-full bg-amareloMil text-preto py-3 text-sm font-bold tracking-[2px] font-estencil disabled:opacity-60 inline-flex items-center justify-center gap-2"
         >
-          {enviando ? "ENTRANDO…" : "⚐ ENTRAR"}
+          <Flag size={16} /> {enviando ? "ENTRANDO…" : "ENTRAR"}
         </button>
       </form>
     </div>
