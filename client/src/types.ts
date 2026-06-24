@@ -19,10 +19,22 @@ export interface Pessoa {
   nome: string;
 }
 
+export interface TurmaResumo {
+  codigo: string;
+  apelido: string;
+}
+
+export interface Turma extends TurmaResumo {
+  id: string;
+  ordem: number;
+}
+
 export interface Person extends Pessoa {
   id: string;
   isMonitor: boolean;
   available: boolean;
+  turmaId?: string | null;
+  turma?: TurmaResumo | null;
 }
 
 export type DiaEscala = Record<Funcao, Pessoa[]>;
@@ -33,6 +45,9 @@ export interface EscalaDTO {
   escala: DiaEscala[];
   balanceado?: boolean;
   monitoresCount?: number;
+  guardasCount?: number;
+  turmaId?: string | null;
+  turma?: { id: string; codigo: string; apelido: string } | null;
 }
 
 export interface Instrutor {
@@ -40,10 +55,20 @@ export interface Instrutor {
   nome: string;
 }
 
+export type Papel = "superadmin" | "instrutor";
+
+export interface MeUser {
+  username: string;
+  role: Papel;
+  turma: { id: string; codigo: string; apelido: string } | null;
+}
+
 export interface Usuario {
   id: string;
   username: string;
+  role: Papel;
   createdAt: string;
+  turma?: TurmaResumo | null;
 }
 
 export interface AditamentoConfig {

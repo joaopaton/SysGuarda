@@ -6,7 +6,9 @@ import {
   VAGAS,
   type DiaEscala,
   type EscalaDTO,
+  type MeUser,
   type Person,
+  type Turma,
 } from "./types";
 import { SeletorPessoa } from "./components/SeletorPessoa";
 import { AditamentoModal } from "./components/AditamentoModal";
@@ -50,10 +52,19 @@ function proximaTercaISO(): string {
   return d.toISOString().split("T")[0];
 }
 
-export default function App({ onLogout }: { onLogout: () => void }) {
+export default function App({
+  onLogout,
+  user,
+}: {
+  onLogout: () => void;
+  user: MeUser | null;
+}) {
+  const isSuper = user?.role === "superadmin";
   const [aba, setAba] = useState<Aba>("escala");
   const [monitores, setMonitores] = useState<Person[]>([]);
   const [guardas, setGuardas] = useState<Person[]>([]);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [turmaSel, setTurmaSel] = useState<string>(user?.turma?.id ?? "");
   const [inicio, setInicio] = useState(proximaTercaISO());
   const [balancear, setBalancear] = useState(true);
   const [dto, setDto] = useState<EscalaDTO | null>(null);
@@ -115,36 +126,46 @@ export default function App({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     carregarEfetivo();
     carregarHistorico();
+    api.getTurmas().then(setTurmas).catch(() => {});
   }, [carregarEfetivo, carregarHistorico]);
+
+  // Turma a usar ao gerar/salvar: a escolhida, ou a da escala aberta, ou a do usuário.
+  const turmaAtiva = () => dto?.turmaId ?? turmaSel ?? user?.turma?.id ?? null;
 
   const gerar = useCallback(async () => {
     setErro(null);
     setMsg(null);
     try {
-      const novo = await api.generate(inicio, balancear);
+      const turmaId = turmaSel || user?.turma?.id || null;
+      const novo = await api.generate(inicio, balancear, turmaId);
       setDto(novo);
+      if (novo.turmaId) setTurmaSel(novo.turmaId);
       setScheduleId(null); // escala nova, ainda não salva
       setAba("escala");
     } catch (e) {
       setErro((e as Error).message);
     }
-  }, [inicio, balancear]);
+  }, [inicio, balancear, turmaSel, user]);
 
   // Importa uma escala em CSV e já abre o Aditamento baseado nela.
-  const importarEscalaCsv = useCallback(async (file: File) => {
-    setErro(null);
-    setMsg(null);
-    try {
-      const texto = await file.text();
-      const imp = parseEscalaCsv(texto);
-      setDto({ ...imp, balanceado: false });
-      setScheduleId(null); // escala nova, ainda não salva
-      setAba("escala");
-      setShowAditamento(true);
-    } catch (e) {
-      setErro((e as Error).message);
-    }
-  }, []);
+  const importarEscalaCsv = useCallback(
+    async (file: File) => {
+      setErro(null);
+      setMsg(null);
+      try {
+        const texto = await file.text();
+        const imp = parseEscalaCsv(texto);
+        const turmaId = turmaSel || user?.turma?.id || null;
+        setDto({ ...imp, balanceado: false, turmaId });
+        setScheduleId(null); // escala nova, ainda não salva
+        setAba("escala");
+        setShowAditamento(true);
+      } catch (e) {
+        setErro((e as Error).message);
+      }
+    },
+    [turmaSel, user]
+  );
 
   // Abre uma escala salva no editor.
   const abrirEscala = useCallback(async (id: string) => {
@@ -176,16 +197,30 @@ export default function App({ onLogout }: { onLogout: () => void }) {
     setEditando(null);
   };
 
-  const adicionarGuarda = async () => {
+  const adicionarGuarda = async (turmaId: string | null) => {
     if (!novoNome.trim()) return;
-    await api.addPerson({
-      num: novoNum.trim() || "---",
-      nome: novoNome.trim().toUpperCase(),
-      isMonitor: false,
-    });
-    setNovoNum("");
-    setNovoNome("");
-    carregarEfetivo();
+    try {
+      await api.addPerson({
+        num: novoNum.trim() || "---",
+        nome: novoNome.trim().toUpperCase(),
+        isMonitor: false,
+        turmaId: isSuper ? turmaId : user?.turma?.id ?? null,
+      });
+      setNovoNum("");
+      setNovoNome("");
+      carregarEfetivo();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+
+  const definirTurma = async (id: string, turmaId: string | null) => {
+    try {
+      await api.setTurma(id, turmaId);
+      carregarEfetivo();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
   };
 
   const removerPessoa = async (id: string) => {
@@ -204,11 +239,12 @@ export default function App({ onLogout }: { onLogout: () => void }) {
     setMsg(null);
     setErro(null);
     try {
+      const turmaId = turmaAtiva();
       if (scheduleId) {
-        await api.update(scheduleId, dto.startDate, dto.escala);
+        await api.update(scheduleId, dto.startDate, dto.escala, turmaId);
         setMsg("Escala atualizada no banco.");
       } else {
-        const r = await api.save(dto.startDate, dto.escala);
+        const r = await api.save(dto.startDate, dto.escala, turmaId);
         setScheduleId(r.id);
         setMsg("Escala salva no banco — já entra no balanceamento futuro.");
       }
@@ -237,8 +273,8 @@ export default function App({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="min-h-screen text-caqui font-cond">
-      <Header onLogout={onLogout} />
-      <Tabs aba={aba} setAba={setAba} />
+      <Header onLogout={onLogout} user={user} />
+      <Tabs aba={aba} setAba={setAba} isSuper={isSuper} />
 
       <div className="max-w-[1100px] mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {erro && (
@@ -259,6 +295,11 @@ export default function App({ onLogout }: { onLogout: () => void }) {
             onImportar={importarHistorico}
             onLimpar={limparHistorico}
             onImportarEscala={importarEscalaCsv}
+            isSuper={isSuper}
+            turmas={turmas}
+            turmaSel={turmaSel}
+            setTurmaSel={setTurmaSel}
+            user={user}
           />
         )}
 
@@ -273,6 +314,10 @@ export default function App({ onLogout }: { onLogout: () => void }) {
             onAdicionar={adicionarGuarda}
             onRemover={removerPessoa}
             onToggle={alternarDisponibilidade}
+            onDefinirTurma={definirTurma}
+            isSuper={isSuper}
+            turmas={turmas}
+            user={user}
           />
         )}
 
@@ -305,7 +350,9 @@ export default function App({ onLogout }: { onLogout: () => void }) {
           />
         )}
 
-        {aba === "usuarios" && <UsuariosTab onErro={setErro} />}
+        {aba === "usuarios" && isSuper && (
+          <UsuariosTab onErro={setErro} turmas={turmas} />
+        )}
       </div>
 
       {showAditamento && dto && (
@@ -324,7 +371,17 @@ export default function App({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-function Header({ onLogout }: { onLogout: () => void }) {
+function Header({
+  onLogout,
+  user,
+}: {
+  onLogout: () => void;
+  user: MeUser | null;
+}) {
+  const papel = user?.role === "superadmin" ? "COMANDANTE" : "INSTRUTOR";
+  const turmaLbl = user?.turma
+    ? `${user.turma.codigo} · ${user.turma.apelido}`
+    : null;
   return (
     <div className="bg-olivaEsc border-b-[3px] border-amareloMil px-4 sm:px-6 py-3 sm:py-[18px]">
       <div className="max-w-[1100px] mx-auto flex items-center gap-3 sm:gap-4">
@@ -340,9 +397,19 @@ function Header({ onLogout }: { onLogout: () => void }) {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3 shrink-0">
-          <span className="hidden md:inline text-[10px] text-areia font-mono tracking-wide">
-            CLASSIF: USO INTERNO
-          </span>
+          {user && (
+            <div className="hidden sm:block text-right leading-tight">
+              <div className="text-[11px] text-caquiClaro font-mono">
+                {user.username}{" "}
+                <span className="text-areia">· {papel}</span>
+              </div>
+              {turmaLbl && (
+                <div className="text-[10px] text-amareloMil font-mono tracking-wide">
+                  {turmaLbl}
+                </div>
+              )}
+            </div>
+          )}
           <button
             onClick={onLogout}
             title="Sair"
@@ -356,13 +423,23 @@ function Header({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-function Tabs({ aba, setAba }: { aba: Aba; setAba: (a: Aba) => void }) {
+function Tabs({
+  aba,
+  setAba,
+  isSuper,
+}: {
+  aba: Aba;
+  setAba: (a: Aba) => void;
+  isSuper: boolean;
+}) {
   const tabs: [Aba, string, typeof CalendarDays][] = [
     ["escala", "ESCALA", CalendarDays],
     ["salvas", "SALVAS", Archive],
     ["guardas", "EFETIVO", Users],
     ["config", "COMANDO", Settings],
-    ["usuarios", "USUÁRIOS", UserCog],
+    ...(isSuper
+      ? ([["usuarios", "USUÁRIOS", UserCog]] as [Aba, string, typeof CalendarDays][])
+      : []),
   ];
   return (
     <div className="bg-olivaEsc border-b border-linha px-2 sm:px-6">
@@ -396,6 +473,11 @@ function ConfigTab({
   onImportar,
   onLimpar,
   onImportarEscala,
+  isSuper,
+  turmas,
+  turmaSel,
+  setTurmaSel,
+  user,
 }: {
   inicio: string;
   setInicio: (s: string) => void;
@@ -407,6 +489,11 @@ function ConfigTab({
   onImportar: (file: File, mode: "replace" | "add") => void;
   onLimpar: () => void;
   onImportarEscala: (file: File) => void;
+  isSuper: boolean;
+  turmas: Turma[];
+  turmaSel: string;
+  setTurmaSel: (s: string) => void;
+  user: MeUser | null;
 }) {
   return (
     <div className="max-w-[480px]">
@@ -416,6 +503,35 @@ function ConfigTab({
         </h2>
         <div className="h-0.5 mb-5 bg-[repeating-linear-gradient(90deg,#d4b942_0_10px,transparent_10px_18px)]" />
         <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-[11px] text-caqui block mb-1.5 tracking-[2px] font-mono">
+              TURMA DA SEMANA
+            </label>
+            {isSuper ? (
+              <select
+                value={turmaSel}
+                onChange={(e) => setTurmaSel(e.target.value)}
+                className="w-full bg-preto border border-linha text-caquiClaro px-3 py-2.5 text-sm box-border font-mono"
+              >
+                <option value="">— AUTOMÁTICO (RODÍZIO T1→T4) —</option>
+                {turmas.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.codigo} · {t.apelido}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="bg-preto border border-linha px-3 py-2.5 text-[13px] text-amareloMil font-bold font-mono">
+                {user?.turma
+                  ? `${user.turma.codigo} · ${user.turma.apelido}`
+                  : "— SEM TURMA DEFINIDA —"}
+              </div>
+            )}
+            <p className="mt-1.5 text-[10px] text-areia font-mono">
+              &gt; A GUARDA DESTA SEMANA É TIRADA POR ESTA TURMA.
+            </p>
+          </div>
+
           <div>
             <label className="text-[11px] text-caqui block mb-1.5 tracking-[2px] font-mono">
               TERÇA-FEIRA INICIAL
@@ -458,6 +574,7 @@ function ConfigTab({
             </span>
           </label>
 
+          {isSuper && (
           <div className="bg-preto border border-dashed border-areia px-3 py-3">
             <span className="text-[11px] text-areia mb-1 tracking-[2px] font-mono flex items-center gap-1.5">
               <Upload size={13} /> IMPORTAR HISTÓRICO (PLANILHA / CSV)
@@ -514,6 +631,7 @@ function ConfigTab({
               </p>
             )}
           </div>
+          )}
 
           <button
             onClick={onGerar}
@@ -562,6 +680,10 @@ function EfetivoTab({
   onAdicionar,
   onRemover,
   onToggle,
+  onDefinirTurma,
+  isSuper,
+  turmas,
+  user,
 }: {
   monitores: Person[];
   guardas: Person[];
@@ -569,10 +691,15 @@ function EfetivoTab({
   novoNome: string;
   setNovoNum: (s: string) => void;
   setNovoNome: (s: string) => void;
-  onAdicionar: () => void;
+  onAdicionar: (turmaId: string | null) => void;
   onRemover: (id: string) => void;
   onToggle: (id: string, available: boolean) => void;
+  onDefinirTurma: (id: string, turmaId: string | null) => void;
+  isSuper: boolean;
+  turmas: Turma[];
+  user: MeUser | null;
 }) {
+  const [novaTurma, setNovaTurma] = useState("");
   const ausentes =
     monitores.filter((m) => !m.available).length +
     guardas.filter((g) => !g.available).length;
@@ -601,6 +728,11 @@ function EfetivoTab({
       <div className="bg-olivaEsc border border-linha p-5 mb-5">
         <h2 className="m-0 mb-1 text-[15px] text-caquiClaro font-estencil tracking-[2px] flex items-center gap-2">
           <Users size={16} /> EFETIVO DE GUARDA
+          {!isSuper && user?.turma && (
+            <span className="text-[11px] text-amareloMil font-mono">
+              · {user.turma.codigo} {user.turma.apelido}
+            </span>
+          )}
         </h2>
         <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
           &gt; PERMANÊNCIA E GUARDAS DO TG
@@ -616,11 +748,25 @@ function EfetivoTab({
             placeholder="NOME"
             value={novoNome}
             onChange={(e) => setNovoNome(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onAdicionar()}
+            onKeyDown={(e) => e.key === "Enter" && onAdicionar(novaTurma || null)}
             className="flex-1 min-w-[140px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
           />
+          {isSuper && (
+            <select
+              value={novaTurma}
+              onChange={(e) => setNovaTurma(e.target.value)}
+              className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+            >
+              <option value="">— turma —</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.codigo} {t.apelido}
+                </option>
+              ))}
+            </select>
+          )}
           <button
-            onClick={onAdicionar}
+            onClick={() => onAdicionar(novaTurma || null)}
             className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
           >
             <Plus size={15} /> INCLUIR
@@ -628,13 +774,16 @@ function EfetivoTab({
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
         {guardas.map((g) => (
           <Cartao
             key={g.id}
             p={g}
             onRemover={() => onRemover(g.id)}
             onToggle={() => onToggle(g.id, !g.available)}
+            isSuper={isSuper}
+            turmas={turmas}
+            onDefinirTurma={onDefinirTurma}
           />
         ))}
       </div>
@@ -657,52 +806,80 @@ function Cartao({
   onRemover,
   onToggle,
   destaque,
+  isSuper,
+  turmas,
+  onDefinirTurma,
 }: {
   p: Person;
   onRemover: () => void;
   onToggle: () => void;
   destaque?: boolean;
+  isSuper?: boolean;
+  turmas?: Turma[];
+  onDefinirTurma?: (id: string, turmaId: string | null) => void;
 }) {
   const ausente = !p.available;
   return (
     <div
       className={`${
         destaque ? "bg-oliva border-amareloMil/40" : "bg-olivaEsc border-linha"
-      } border px-3 py-2.5 flex items-center justify-between gap-2 font-mono ${
-        ausente ? "opacity-50" : ""
-      }`}
+      } border px-3 py-2.5 font-mono ${ausente ? "opacity-50" : ""}`}
     >
-      <span className="text-[13px] truncate">
-        <span className="text-amareloMil font-bold mr-2">{p.num}</span>
-        <span
-          className={
-            ausente ? "text-areia line-through" : "text-caquiClaro"
-          }
-        >
-          {p.nome}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[13px] truncate">
+          <span className="text-amareloMil font-bold mr-2">{p.num}</span>
+          <span
+            className={ausente ? "text-areia line-through" : "text-caquiClaro"}
+          >
+            {p.nome}
+          </span>
+          {ausente && (
+            <span className="text-vermelho text-[10px] ml-1.5">AUSENTE</span>
+          )}
         </span>
-        {ausente && (
-          <span className="text-vermelho text-[10px] ml-1.5">AUSENTE</span>
-        )}
-      </span>
-      <span className="flex items-center gap-1.5 shrink-0">
-        <button
-          onClick={onToggle}
-          title={ausente ? "Marcar presente" : "Marcar ausente (doente/afastado)"}
-          className={`leading-none ${
-            ausente ? "text-areia" : "text-verdeBrilho"
-          }`}
-        >
-          {ausente ? <X size={16} /> : <Check size={16} />}
-        </button>
-        <button
-          onClick={onRemover}
-          title="Remover do efetivo"
-          className="text-vermelho leading-none"
-        >
-          <Trash2 size={15} />
-        </button>
-      </span>
+        <span className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={onToggle}
+            title={
+              ausente ? "Marcar presente" : "Marcar ausente (doente/afastado)"
+            }
+            className={`leading-none ${
+              ausente ? "text-areia" : "text-verdeBrilho"
+            }`}
+          >
+            {ausente ? <X size={16} /> : <Check size={16} />}
+          </button>
+          <button
+            onClick={onRemover}
+            title="Remover do efetivo"
+            className="text-vermelho leading-none"
+          >
+            <Trash2 size={15} />
+          </button>
+        </span>
+      </div>
+      {!destaque && (
+        <div className="mt-1.5 text-[10px]">
+          {isSuper && turmas && onDefinirTurma ? (
+            <select
+              value={p.turmaId ?? ""}
+              onChange={(e) => onDefinirTurma(p.id, e.target.value || null)}
+              className="w-full bg-preto border border-linha text-areia px-1.5 py-1 text-[10px] font-mono"
+            >
+              <option value="">— sem turma —</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.codigo} {t.apelido}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-areia">
+              {p.turma ? `${p.turma.codigo} · ${p.turma.apelido}` : "sem turma"}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -794,8 +971,13 @@ function EscalaTab({
     <div>
       <div className="flex justify-between items-end mb-4 flex-wrap gap-2.5">
         <div>
-          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px]">
+          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2 flex-wrap">
             ESCALA EM VIGOR
+            {dto.turma && (
+              <span className="text-[11px] bg-amareloMil text-preto px-2 py-0.5 tracking-wide font-mono">
+                {dto.turma.codigo} · {dto.turma.apelido}
+              </span>
+            )}
           </h2>
           <p className="mt-1 text-areia text-[11px] font-mono">
             {salvoId ? (
@@ -955,10 +1137,18 @@ function EscalaTab({
   );
 }
 
-function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
+function UsuariosTab({
+  onErro,
+  turmas,
+}: {
+  onErro: (e: string | null) => void;
+  turmas: Turma[];
+}) {
   const [usuarios, setUsuarios] = useState<import("./types").Usuario[]>([]);
   const [nome, setNome] = useState("");
   const [senha, setSenha] = useState("");
+  const [role, setRole] = useState<"superadmin" | "instrutor">("instrutor");
+  const [turmaId, setTurmaId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -977,10 +1167,22 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
     onErro(null);
     setMsg(null);
     try {
-      await api.addUser(nome.trim(), senha);
+      await api.addUser(nome.trim(), senha, role, turmaId || null);
       setMsg(`Usuário "${nome.trim().toLowerCase()}" criado.`);
       setNome("");
       setSenha("");
+      setTurmaId("");
+      setRole("instrutor");
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const trocarTurma = async (id: string, novo: string) => {
+    onErro(null);
+    try {
+      await api.updateUser(id, { turmaId: novo || null });
       carregar();
     } catch (e) {
       onErro((e as Error).message);
@@ -1033,6 +1235,28 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
             onKeyDown={(e) => e.key === "Enter" && adicionar()}
             className="flex-1 min-w-[120px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
           />
+          <select
+            value={role}
+            onChange={(e) =>
+              setRole(e.target.value === "superadmin" ? "superadmin" : "instrutor")
+            }
+            className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          >
+            <option value="instrutor">Instrutor</option>
+            <option value="superadmin">Comandante</option>
+          </select>
+          <select
+            value={turmaId}
+            onChange={(e) => setTurmaId(e.target.value)}
+            className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          >
+            <option value="">— turma —</option>
+            {turmas.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.codigo} {t.apelido}
+              </option>
+            ))}
+          </select>
           <button
             onClick={adicionar}
             className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
@@ -1051,13 +1275,35 @@ function UsuariosTab({ onErro }: { onErro: (e: string | null) => void }) {
         {usuarios.map((u) => (
           <div
             key={u.id}
-            className="bg-olivaEsc border border-linha px-3 py-2.5 flex items-center justify-between font-mono"
+            className="bg-olivaEsc border border-linha px-3 py-2.5 flex items-center justify-between gap-2 font-mono flex-wrap"
           >
-            <span className="text-[13px] text-caquiClaro inline-flex items-center gap-2">
-              <CircleUserRound size={15} className="text-amareloMil" />
-              {u.username}
+            <span className="text-[13px] text-caquiClaro inline-flex items-center gap-2 min-w-0">
+              <CircleUserRound size={15} className="text-amareloMil shrink-0" />
+              <span className="truncate">{u.username}</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.5 tracking-wide shrink-0 ${
+                  u.role === "superadmin"
+                    ? "bg-amareloMil text-preto"
+                    : "border border-areia text-areia"
+                }`}
+              >
+                {u.role === "superadmin" ? "COMANDANTE" : "INSTRUTOR"}
+              </span>
             </span>
             <span className="flex items-center gap-2">
+              <select
+                value={u.turma ? turmas.find((t) => t.codigo === u.turma!.codigo)?.id ?? "" : ""}
+                onChange={(e) => trocarTurma(u.id, e.target.value)}
+                className="bg-preto border border-linha text-areia px-1.5 py-1 text-[10px] font-mono"
+                title="Turma do instrutor"
+              >
+                <option value="">— turma —</option>
+                {turmas.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.codigo} {t.apelido}
+                  </option>
+                ))}
+              </select>
               <button
                 onClick={() => redefinir(u.id, u.username)}
                 className="text-[10px] text-areia border border-linha px-2 py-0.5 hover:text-amareloMil inline-flex items-center gap-1"
@@ -1092,7 +1338,12 @@ function SalvasTab({
   onErro: (e: string | null) => void;
 }) {
   const [lista, setLista] = useState<
-    { id: string; startDate: string; createdAt: string }[]
+    {
+      id: string;
+      startDate: string;
+      createdAt: string;
+      turma?: { codigo: string; apelido: string } | null;
+    }[]
   >([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -1164,9 +1415,14 @@ function SalvasTab({
               }`}
             >
               <div className="min-w-0">
-                <div className="text-[13px] text-caquiClaro flex items-center gap-2">
+                <div className="text-[13px] text-caquiClaro flex items-center gap-2 flex-wrap">
                   <CalendarDays size={14} className="text-amareloMil shrink-0" />
                   {periodo(s.startDate)}
+                  {s.turma && (
+                    <span className="text-[9px] bg-amareloMil text-preto px-1.5 py-0.5 tracking-wide">
+                      {s.turma.codigo} · {s.turma.apelido}
+                    </span>
+                  )}
                   {s.id === currentId && (
                     <span className="text-[9px] text-verdeBrilho border border-verdeBrilho px-1.5 py-0.5 tracking-wide">
                       EM EDIÇÃO

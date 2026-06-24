@@ -35,22 +35,26 @@ Não há suíte de testes nem linter configurado. "Verificar" = `npm run build` 
 - Ao mexer em modelos do Prisma, edite **só** `schema.prisma`; o de produção é regenerado.
 
 Modelos-chave (`server/prisma/schema.prisma`):
-- `Person` — efetivo. `isMonitor` (monitor só comanda), `active` (soft-delete do efetivo), `available` (false = doente/afastado, sai do sorteio). **A identidade é `(num, nome)`** porque um mesmo `num` pode existir em dois registros — daí `keyOf(p) = num + nome` ser usado em todo lugar.
-- `Schedule` + `Assignment` — uma escala e suas vagas (`dayIndex`, `funcao`, `slot`). Assignment guarda *snapshot* `personNum`/`personNome` e um vínculo opcional a `Person` (`---`/`VAZIO` para vaga vazia).
-- `ManualHistory` — histórico importado à mão, somado ao histórico calculado das escalas salvas para balancear o sorteio.
-- `User` — login (senha com hash scrypt, `server/src/password.ts`). `Instructor` e `AditamentoConfig` (linha única `id="singleton"`) servem ao Aditamento.
+- `Turma` — T1..T4 (`codigo`, `apelido`, `ordem` = rodízio). Cada semana de guarda é de **uma** turma; o rodízio segue `ordem`.
+- `Person` — efetivo. `isMonitor` (monitor só comanda; monitores são **TG-wide, sem turma**), `turmaId` (guardas pertencem a uma turma), `active` (soft-delete), `available` (false = doente/afastado, sai do sorteio). **A identidade é `(num, nome)`** porque um mesmo `num` pode existir em dois registros — daí `keyOf(p) = num + nome` ser usado em todo lugar.
+- `Schedule` + `Assignment` — uma escala (de uma `turmaId`) e suas vagas (`dayIndex`, `funcao`, `slot`). Assignment guarda *snapshot* `personNum`/`personNome` e um vínculo opcional a `Person` (`---`/`VAZIO` para vaga vazia).
+- `ManualHistory` — histórico importado à mão, somado ao histórico das escalas salvas para balancear o sorteio.
+- `User` — login (senha com hash scrypt, `server/src/password.ts`). `role` = `superadmin` (Comandante) | `instrutor` (Sgt); `turmaId` vincula o instrutor à turma. `Instructor` (sobreaviso) e `AditamentoConfig` (linha única `id="singleton"`) servem ao Aditamento.
 
 ## Algoritmo de geração (`server/src/generate.ts`)
 
 Sorteio aleatório **ponderado por histórico**: quanto mais guardas alguém já fez (`historico` do banco + `contagem` da escala atual), menor o peso (`peso = 1/(1+hist+atual*2)`). Regras embutidas: monitor só preenche `Cmt Gd TG` (distribuído por fila ordenada por histórico) e nunca repete função; ninguém repete no mesmo dia (`usadosNoDia`). Sem candidato, a vaga vira `VAZIO`. O histórico de balanceamento vem das últimas N escalas salvas (`historicoDoBanco` em `routes/schedule.ts`), reconciliado por nome com o efetivo atual.
 
-## Autenticação (`server/src/auth.ts`)
+## Autenticação e autorização (`server/src/auth.ts`, `server/src/scope.ts`)
 
-Sessão **stateless por cookie** (`sg_session`): token = payload com `exp` + HMAC-SHA256 assinado com `APP_SECRET` (ou `APP_PASSWORD`). Login fica ativo quando `NODE_ENV=production` **ou** `APP_PASSWORD` definido; em dev (sem essas vars) todas as rotas ficam abertas. Credenciais validadas contra a tabela `User`. `index.ts` deixa `/api/health`, `/api/me`, `/api/login`, `/api/logout` públicas e protege o resto com `requireAuth`.
+Sessão **stateless por cookie** (`sg_session`): token = payload `{ uid, exp }` + HMAC-SHA256 assinado com `APP_SECRET` (ou `APP_PASSWORD`). Login fica ativo quando `NODE_ENV=production` **ou** `APP_PASSWORD` definido; em dev (sem essas vars) tudo abre e `req.user` vira um **superadmin sintético** (`DEV_SUPER`). `requireAuth` resolve o usuário do banco e popula `req.user` (`role`, `turmaId`); `requireSuperadmin` barra não-comandantes.
+
+**Escopo por papel/turma** (`scope.ts`): superadmin vê/edita tudo; instrutor é restrito à própria turma. Helpers: `filtroTurma` (where de consulta), `podeTurma` (checagem de acesso a um registro), `turmaAlvo` (força a turma do instrutor em escritas). Regras aplicadas: `users` e `history` (import) → só superadmin; `people`/`schedule` → guardas e escalas filtrados/escopados por turma; geração escolhe a turma (superadmin) ou usa a do instrutor, com **rodízio** (`proximaTurma`) quando o superadmin não especifica. Validação de entrada via `str`/`bool`/`intIn` em `scope.ts`.
 
 ## Arquitetura HTTP
 
-- Rotas em `server/src/routes/`: `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`.
+- Rotas em `server/src/routes/`: `turmas`, `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`. `/api/users` é montada atrás de `requireSuperadmin`.
+- `/api/me` retorna `{ authenticated, user: { username, role, turma } }`; o client usa isso (via `AuthGate`) para decidir o que mostrar.
 - Em produção o **mesmo processo Node** serve a API e o frontend buildado (`CLIENT_DIST`, fallback SPA para `index.html`). Em dev o Vite faz proxy de `/api`.
 - Client: `client/src/api.ts` centraliza o fetch (`credentials: "include"`). `App.tsx` é a tela principal com abas (`escala`/`guardas`/`config`/`usuarios`); `AuthGate.tsx` + `Login.tsx` controlam o acesso. Exportação PDF (paisagem) e CSV (`;` + BOM para Excel PT-BR) em `client/src/export.ts`.
 - O Aditamento (documento oficial em PDF/impressão) é montado 100% no client: `client/src/aditamento.ts` (`buildAditamentoHTML`) + `components/AditamentoModal.tsx`. Pode ser gerado a partir da escala em memória **ou** importando um CSV de escala via `client/src/parseEscalaCsv.ts` (parser tolerante que faz o round-trip do CSV exportado por `export.ts`: grade função×dia, célula `NUM NOME`, rótulo da função herdado nas linhas de vaga seguintes).

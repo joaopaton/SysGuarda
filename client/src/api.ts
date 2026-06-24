@@ -3,7 +3,9 @@ import type {
   DiaEscala,
   EscalaDTO,
   Instrutor,
+  MeUser,
   Person,
+  Turma,
   Usuario,
 } from "./types";
 
@@ -23,7 +25,8 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   // Autenticação
-  me: () => req<{ authenticated: boolean }>("/api/me"),
+  me: () =>
+    req<{ authenticated: boolean; user?: MeUser }>("/api/me"),
   login: (usuario: string, senha: string) =>
     req<{ ok: boolean }>("/api/login", {
       method: "POST",
@@ -31,17 +34,33 @@ export const api = {
     }),
   logout: () => req<{ ok: boolean }>("/api/logout", { method: "POST" }),
 
+  // Turmas
+  getTurmas: () => req<Turma[]>("/api/turmas"),
+
   // Usuários
   getUsers: () => req<Usuario[]>("/api/users"),
-  addUser: (username: string, password: string) =>
+  addUser: (
+    username: string,
+    password: string,
+    role: "superadmin" | "instrutor",
+    turmaId: string | null
+  ) =>
     req<Usuario>("/api/users", {
       method: "POST",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, role, turmaId }),
     }),
   resetUserPassword: (id: string, password: string) =>
     req<{ ok: boolean }>(`/api/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ password }),
+    }),
+  updateUser: (
+    id: string,
+    patch: { role?: "superadmin" | "instrutor"; turmaId?: string | null }
+  ) =>
+    req<{ ok: boolean }>(`/api/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
     }),
   removeUser: (id: string) =>
     req<void>(`/api/users/${id}`, { method: "DELETE" }),
@@ -49,8 +68,18 @@ export const api = {
   getPeople: () =>
     req<{ monitores: Person[]; guardas: Person[] }>("/api/people"),
 
-  addPerson: (p: { num: string; nome: string; isMonitor: boolean }) =>
-    req<Person>("/api/people", { method: "POST", body: JSON.stringify(p) }),
+  addPerson: (p: {
+    num: string;
+    nome: string;
+    isMonitor: boolean;
+    turmaId?: string | null;
+  }) => req<Person>("/api/people", { method: "POST", body: JSON.stringify(p) }),
+
+  setTurma: (id: string, turmaId: string | null) =>
+    req<Person>(`/api/people/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ turmaId }),
+    }),
 
   setAvailable: (id: string, available: boolean) =>
     req<Person>(`/api/people/${id}`, {
@@ -61,16 +90,16 @@ export const api = {
   removePerson: (id: string) =>
     req<void>(`/api/people/${id}`, { method: "DELETE" }),
 
-  generate: (startDate: string, balancear: boolean) =>
+  generate: (startDate: string, balancear: boolean, turmaId: string | null) =>
     req<EscalaDTO>("/api/schedule/generate", {
       method: "POST",
-      body: JSON.stringify({ startDate, balancear }),
+      body: JSON.stringify({ startDate, balancear, turmaId }),
     }),
 
-  save: (startDate: string, escala: DiaEscala[]) =>
+  save: (startDate: string, escala: DiaEscala[], turmaId: string | null) =>
     req<{ id: string }>("/api/schedule", {
       method: "POST",
-      body: JSON.stringify({ startDate, escala }),
+      body: JSON.stringify({ startDate, escala, turmaId }),
     }),
 
   list: () =>
@@ -80,10 +109,15 @@ export const api = {
 
   get: (id: string) => req<EscalaDTO>(`/api/schedule/${id}`),
 
-  update: (id: string, startDate: string, escala: DiaEscala[]) =>
+  update: (
+    id: string,
+    startDate: string,
+    escala: DiaEscala[],
+    turmaId: string | null
+  ) =>
     req<{ id: string }>(`/api/schedule/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ startDate, escala }),
+      body: JSON.stringify({ startDate, escala, turmaId }),
     }),
 
   remove: (id: string) =>

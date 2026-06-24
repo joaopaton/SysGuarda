@@ -6,6 +6,8 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AuthGate>{(logout) => <App onLogout={logout} />}</AuthGate>
+    <AuthGate>
+      {(logout, user) => <App onLogout={logout} user={user} />}
+    </AuthGate>
   </StrictMode>
 );

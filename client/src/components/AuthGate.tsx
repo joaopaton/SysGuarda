@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
+import type { MeUser } from "../types";
 import { Login } from "./Login";
 
 type Estado = "carregando" | "dentro" | "fora";
@@ -8,14 +9,16 @@ type Estado = "carregando" | "dentro" | "fora";
 export function AuthGate({
   children,
 }: {
-  children: (logout: () => void) => ReactNode;
+  children: (logout: () => void, user: MeUser | null) => ReactNode;
 }) {
   const [estado, setEstado] = useState<Estado>("carregando");
+  const [user, setUser] = useState<MeUser | null>(null);
 
   const checar = useCallback(async () => {
     try {
-      const { authenticated } = await api.me();
-      setEstado(authenticated ? "dentro" : "fora");
+      const r = await api.me();
+      setUser(r.user ?? null);
+      setEstado(r.authenticated ? "dentro" : "fora");
     } catch {
       setEstado("fora");
     }
@@ -29,6 +32,7 @@ export function AuthGate({
     try {
       await api.logout();
     } finally {
+      setUser(null);
       setEstado("fora");
     }
   }, []);
@@ -42,8 +46,8 @@ export function AuthGate({
   }
 
   if (estado === "fora") {
-    return <Login onSuccess={() => setEstado("dentro")} />;
+    return <Login onSuccess={checar} />;
   }
 
-  return <>{children(logout)}</>;
+  return <>{children(logout, user)}</>;
 }
