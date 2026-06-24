@@ -82,6 +82,12 @@ export const api = {
       body: JSON.stringify({ turmaId }),
     }),
 
+  atribuirTurma: (ids: string[], turmaId: string | null) =>
+    req<{ atualizadas: number }>("/api/people/atribuir-turma", {
+      method: "POST",
+      body: JSON.stringify({ ids, turmaId }),
+    }),
+
   setAvailable: (id: string, available: boolean) =>
     req<Person>(`/api/people/${id}`, {
       method: "PATCH",

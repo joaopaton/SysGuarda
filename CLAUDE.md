@@ -53,7 +53,7 @@ Sessão **stateless por cookie** (`sg_session`): token = payload `{ uid, exp }` 
 
 ## Arquitetura HTTP
 
-- Rotas em `server/src/routes/`: `turmas`, `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`. `/api/users` é montada atrás de `requireSuperadmin`.
+- Rotas em `server/src/routes/`: `turmas`, `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`. `/api/users` é montada atrás de `requireSuperadmin`. `POST /api/people/atribuir-turma` (superadmin) move várias pessoas de turma de uma vez (atribuição em massa na aba EFETIVO).
 - `/api/me` retorna `{ authenticated, user: { username, role, turma } }`; o client usa isso (via `AuthGate`) para decidir o que mostrar.
 - Em produção o **mesmo processo Node** serve a API e o frontend buildado (`CLIENT_DIST`, fallback SPA para `index.html`). Em dev o Vite faz proxy de `/api`.
 - Client: `client/src/api.ts` centraliza o fetch (`credentials: "include"`). `App.tsx` é a tela principal com abas (`escala`/`guardas`/`config`/`usuarios`); `AuthGate.tsx` + `Login.tsx` controlam o acesso. Exportação PDF (paisagem) e CSV (`;` + BOM para Excel PT-BR) em `client/src/export.ts`.

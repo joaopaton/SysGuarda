@@ -223,6 +223,15 @@ export default function App({
     }
   };
 
+  const atribuirTurmaEmMassa = async (ids: string[], turmaId: string | null) => {
+    try {
+      await api.atribuirTurma(ids, turmaId);
+      carregarEfetivo();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+
   const adicionarMonitor = async (
     num: string,
     nome: string,
@@ -335,6 +344,7 @@ export default function App({
             onRemover={removerPessoa}
             onToggle={alternarDisponibilidade}
             onDefinirTurma={definirTurma}
+            onAtribuirEmMassa={atribuirTurmaEmMassa}
             isSuper={isSuper}
             turmas={turmas}
             user={user}
@@ -707,6 +717,7 @@ function EfetivoTab({
   onRemover,
   onToggle,
   onDefinirTurma,
+  onAtribuirEmMassa,
   isSuper,
   turmas,
   user,
@@ -722,6 +733,7 @@ function EfetivoTab({
   onRemover: (id: string) => void;
   onToggle: (id: string, available: boolean) => void;
   onDefinirTurma: (id: string, turmaId: string | null) => void;
+  onAtribuirEmMassa: (ids: string[], turmaId: string | null) => void;
   isSuper: boolean;
   turmas: Turma[];
   user: MeUser | null;
@@ -735,11 +747,74 @@ function EfetivoTab({
     setMonNum("");
     setMonNome("");
   };
+
+  // Seleção em massa (só Comandante).
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [bulkTurma, setBulkTurma] = useState("");
+  const toggleSel = (id: string) =>
+    setSel((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const todos = [...monitores, ...guardas];
+  const selecionarTodos = () => setSel(new Set(todos.map((p) => p.id)));
+  const limparSel = () => setSel(new Set());
+  const aplicarBulk = () => {
+    if (sel.size === 0) return;
+    onAtribuirEmMassa([...sel], bulkTurma || null);
+    limparSel();
+  };
+  const selProps = (p: Person) =>
+    isSuper
+      ? { selecionado: sel.has(p.id), onToggleSel: () => toggleSel(p.id) }
+      : {};
   const ausentes =
     monitores.filter((m) => !m.available).length +
     guardas.filter((g) => !g.available).length;
   return (
     <div>
+      {isSuper && (
+        <div className="bg-preto border border-dashed border-amareloMil px-3 py-3 mb-5 flex items-center gap-2 flex-wrap text-[11px] font-mono">
+          <span className="text-amareloMil tracking-wide">
+            ATRIBUIÇÃO EM MASSA:
+          </span>
+          <span className="text-areia">{sel.size} selecionado(s)</span>
+          <button
+            onClick={selecionarTodos}
+            className="border border-linha text-caqui px-2 py-1 hover:text-amareloMil"
+          >
+            TODOS ({todos.length})
+          </button>
+          <button
+            onClick={limparSel}
+            className="border border-linha text-areia px-2 py-1 hover:text-vermelho"
+          >
+            LIMPAR
+          </button>
+          <span className="text-areia ml-auto">→ MOVER PARA</span>
+          <select
+            value={bulkTurma}
+            onChange={(e) => setBulkTurma(e.target.value)}
+            className="bg-preto border border-linha text-caquiClaro px-2 py-1 font-mono"
+          >
+            <option value="">— sem turma —</option>
+            {turmas.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.codigo} {t.apelido}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={aplicarBulk}
+            disabled={sel.size === 0}
+            className="bg-amareloMil text-preto px-3 py-1 font-bold tracking-wide disabled:opacity-50 inline-flex items-center gap-1"
+          >
+            <Check size={13} /> ATRIBUIR
+          </button>
+        </div>
+      )}
+
       <div className="bg-olivaEsc border border-amareloMil p-5 mb-6">
         <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
           <Gem size={16} /> MONITORES — CMT GD TG
@@ -798,6 +873,7 @@ function EfetivoTab({
               turmas={turmas}
               onDefinirTurma={onDefinirTurma}
               destaque
+              {...selProps(g)}
             />
           ))}
         </div>
@@ -862,6 +938,7 @@ function EfetivoTab({
             isSuper={isSuper}
             turmas={turmas}
             onDefinirTurma={onDefinirTurma}
+            {...selProps(g)}
           />
         ))}
       </div>
@@ -887,6 +964,8 @@ function Cartao({
   isSuper,
   turmas,
   onDefinirTurma,
+  selecionado,
+  onToggleSel,
 }: {
   p: Person;
   onRemover: () => void;
@@ -895,16 +974,28 @@ function Cartao({
   isSuper?: boolean;
   turmas?: Turma[];
   onDefinirTurma?: (id: string, turmaId: string | null) => void;
+  selecionado?: boolean;
+  onToggleSel?: () => void;
 }) {
   const ausente = !p.available;
   return (
     <div
       className={`${
         destaque ? "bg-oliva border-amareloMil/40" : "bg-olivaEsc border-linha"
-      } border px-3 py-2.5 font-mono ${ausente ? "opacity-50" : ""}`}
+      } border px-3 py-2.5 font-mono ${ausente ? "opacity-50" : ""} ${
+        selecionado ? "ring-1 ring-amareloMil" : ""
+      }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] truncate">
+        <span className="text-[13px] truncate flex items-center">
+          {onToggleSel && (
+            <input
+              type="checkbox"
+              checked={!!selecionado}
+              onChange={onToggleSel}
+              className="mr-2 accent-amareloMil shrink-0"
+            />
+          )}
           <span className="text-amareloMil font-bold mr-2">{p.num}</span>
           <span
             className={ausente ? "text-areia line-through" : "text-caquiClaro"}
@@ -1267,6 +1358,19 @@ function UsuariosTab({
     }
   };
 
+  const trocarPapel = async (id: string, novo: import("./types").Papel) => {
+    onErro(null);
+    try {
+      await api.updateUser(id, { role: novo });
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const idDaTurma = (cod?: string) =>
+    cod ? turmas.find((t) => t.codigo === cod)?.id ?? "" : "";
+
   const remover = async (id: string, username: string) => {
     onErro(null);
     if (!confirm(`Remover o usuário "${username}"?`)) return;
@@ -1289,98 +1393,140 @@ function UsuariosTab({
     }
   };
 
+  const inputCls =
+    "w-full bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono";
+  const labelCls = "text-[10px] text-areia block mb-1 tracking-[2px] font-mono";
+  const papelLabel = (r: import("./types").Papel) =>
+    r === "superadmin" ? "COMANDANTE" : r === "monitor" ? "MONITOR" : "INSTRUTOR";
+  const papelCls = (r: import("./types").Papel) =>
+    r === "superadmin"
+      ? "bg-amareloMil text-preto"
+      : r === "monitor"
+      ? "border border-verdeBrilho text-verdeBrilho"
+      : "border border-areia text-areia";
+
   return (
-    <div className="max-w-[560px]">
+    <div className="max-w-[680px]">
       <div className="bg-olivaEsc border border-amareloMil p-5 mb-5">
         <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
-          <UserCog size={16} /> USUÁRIOS DE ACESSO
+          <UserCog size={16} /> NOVO USUÁRIO DE ACESSO
         </h2>
-        <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
-          &gt; QUEM PODE ENTRAR NO SISTEMA. SENHAS GUARDADAS CRIPTOGRAFADAS.
+        <p className="m-0 mb-4 text-[11px] text-areia font-mono">
+          &gt; COMANDANTE VÊ TUDO · INSTRUTOR/MONITOR SÓ A SUA TURMA. SENHAS
+          GUARDADAS CRIPTOGRAFADAS.
         </p>
-        <div className="flex gap-2.5 flex-wrap">
-          <input
-            placeholder="usuário"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            className="flex-1 min-w-[120px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
-          />
-          <input
-            type="password"
-            placeholder="senha (mín. 4)"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && adicionar()}
-            className="flex-1 min-w-[120px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
-          />
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as import("./types").Papel)}
-            className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
-          >
-            <option value="instrutor">Instrutor</option>
-            <option value="monitor">Monitor</option>
-            <option value="superadmin">Comandante</option>
-          </select>
-          <select
-            value={turmaId}
-            onChange={(e) => setTurmaId(e.target.value)}
-            className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
-          >
-            <option value="">— turma —</option>
-            {turmas.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.codigo} {t.apelido}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={adicionar}
-            className="bg-verdeMil text-caquiClaro px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
-          >
-            <Plus size={15} /> CRIAR
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>USUÁRIO</label>
+            <input
+              placeholder="ex.: schutz"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>SENHA (MÍN. 4)</label>
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && adicionar()}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>PAPEL</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as import("./types").Papel)}
+              className={inputCls}
+            >
+              <option value="instrutor">Instrutor</option>
+              <option value="monitor">Monitor</option>
+              <option value="superadmin">Comandante</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>
+              TURMA {role === "superadmin" && "(opcional)"}
+            </label>
+            <select
+              value={turmaId}
+              onChange={(e) => setTurmaId(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">— sem turma —</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.codigo} {t.apelido}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+        <button
+          onClick={adicionar}
+          className="mt-4 w-full bg-verdeMil text-caquiClaro py-2.5 font-bold text-[13px] tracking-wide font-mono inline-flex items-center justify-center gap-1.5"
+        >
+          <Plus size={15} /> CRIAR USUÁRIO
+        </button>
         {msg && (
-          <p className="mt-2 text-[11px] text-amareloMil font-mono flex items-center gap-1.5">
+          <p className="mt-3 text-[11px] text-amareloMil font-mono flex items-center gap-1.5">
             <Check size={12} /> {msg}
           </p>
         )}
       </div>
 
+      <h3 className="text-[12px] text-areia font-mono tracking-[2px] mb-2">
+        &gt; {usuarios.length} USUÁRIO(S) ATIVO(S)
+      </h3>
       <div className="flex flex-col gap-2">
         {usuarios.map((u) => (
           <div
             key={u.id}
-            className="bg-olivaEsc border border-linha px-3 py-2.5 flex items-center justify-between gap-2 font-mono flex-wrap"
+            className="bg-olivaEsc border border-linha px-3 py-3 font-mono"
           >
-            <span className="text-[13px] text-caquiClaro inline-flex items-center gap-2 min-w-0">
-              <CircleUserRound size={15} className="text-amareloMil shrink-0" />
-              <span className="truncate">{u.username}</span>
-              <span
-                className={`text-[9px] px-1.5 py-0.5 tracking-wide shrink-0 ${
-                  u.role === "superadmin"
-                    ? "bg-amareloMil text-preto"
-                    : u.role === "monitor"
-                    ? "border border-verdeBrilho text-verdeBrilho"
-                    : "border border-areia text-areia"
-                }`}
-              >
-                {u.role === "superadmin"
-                  ? "COMANDANTE"
-                  : u.role === "monitor"
-                  ? "MONITOR"
-                  : "INSTRUTOR"}
+            <div className="flex items-center gap-2 mb-2">
+              <CircleUserRound size={16} className="text-amareloMil shrink-0" />
+              <span className="text-[14px] text-caquiClaro truncate">
+                {u.username}
               </span>
-            </span>
-            <span className="flex items-center gap-2">
-              <select
-                value={u.turma ? turmas.find((t) => t.codigo === u.turma!.codigo)?.id ?? "" : ""}
-                onChange={(e) => trocarTurma(u.id, e.target.value)}
-                className="bg-preto border border-linha text-areia px-1.5 py-1 text-[10px] font-mono"
-                title="Turma do instrutor"
+              <span
+                className={`text-[9px] px-1.5 py-0.5 tracking-wide shrink-0 ${papelCls(
+                  u.role
+                )}`}
               >
-                <option value="">— turma —</option>
+                {papelLabel(u.role)}
+              </span>
+              {u.turma && (
+                <span className="text-[10px] text-amareloMil ml-auto">
+                  {u.turma.codigo} · {u.turma.apelido}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-[9px] text-areia tracking-wide">PAPEL</label>
+              <select
+                value={u.role}
+                onChange={(e) =>
+                  trocarPapel(u.id, e.target.value as import("./types").Papel)
+                }
+                className="bg-preto border border-linha text-caqui px-1.5 py-1 text-[10px] font-mono"
+              >
+                <option value="instrutor">Instrutor</option>
+                <option value="monitor">Monitor</option>
+                <option value="superadmin">Comandante</option>
+              </select>
+              <label className="text-[9px] text-areia tracking-wide ml-1">
+                TURMA
+              </label>
+              <select
+                value={idDaTurma(u.turma?.codigo)}
+                onChange={(e) => trocarTurma(u.id, e.target.value)}
+                className="bg-preto border border-linha text-caqui px-1.5 py-1 text-[10px] font-mono"
+              >
+                <option value="">— sem turma —</option>
                 {turmas.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.codigo} {t.apelido}
@@ -1389,24 +1535,21 @@ function UsuariosTab({
               </select>
               <button
                 onClick={() => redefinir(u.id, u.username)}
-                className="text-[10px] text-areia border border-linha px-2 py-0.5 hover:text-amareloMil inline-flex items-center gap-1"
+                className="ml-auto text-[10px] text-areia border border-linha px-2 py-1 hover:text-amareloMil inline-flex items-center gap-1"
               >
                 <RotateCw size={11} /> SENHA
               </button>
               <button
                 onClick={() => remover(u.id, u.username)}
-                className="text-vermelho leading-none"
+                className="text-vermelho leading-none p-1"
                 title="Remover"
               >
                 <Trash2 size={15} />
               </button>
-            </span>
+            </div>
           </div>
         ))}
       </div>
-      <p className="text-areia text-[11px] mt-4 font-mono">
-        &gt; {usuarios.length} USUÁRIO(S) ATIVO(S).
-      </p>
     </div>
   );
 }

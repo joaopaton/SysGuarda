@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { str, bool, isSuperadmin, podeTurma, turmaAlvo } from "../scope.js";
+import { requireSuperadmin } from "../auth.js";
 
 export const peopleRouter = Router();
 
@@ -36,6 +37,27 @@ peopleRouter.get("/", async (req, res) => {
     include: incluirTurma,
   });
   res.json({ monitores, guardas });
+});
+
+// POST /api/people/atribuir-turma  { ids: string[], turmaId }  -> em massa
+// Só o Comandante. Caminho distinto de "/" e "/:id" (sem conflito de rota).
+peopleRouter.post("/atribuir-turma", requireSuperadmin, async (req, res) => {
+  const ids = Array.isArray(req.body?.ids)
+    ? req.body.ids.filter((x: unknown) => typeof x === "string").slice(0, 1000)
+    : [];
+  const turmaId = str(req.body?.turmaId, 40) || null;
+  if (ids.length === 0) {
+    return res.status(400).json({ error: "Selecione ao menos uma pessoa." });
+  }
+  if (turmaId) {
+    const t = await prisma.turma.findUnique({ where: { id: turmaId } });
+    if (!t || !t.active) return res.status(400).json({ error: "Turma inválida." });
+  }
+  const r = await prisma.person.updateMany({
+    where: { id: { in: ids } },
+    data: { turmaId },
+  });
+  res.json({ atualizadas: r.count });
 });
 
 // POST /api/people  { num, nome, isMonitor, turmaId }
