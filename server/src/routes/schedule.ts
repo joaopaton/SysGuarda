@@ -23,7 +23,7 @@ async function efetivoAtivo(turmaId: string | null) {
   const people = await prisma.person.findMany({ where: { active: true } });
   const disponiveis = people.filter((p) => p.available);
   return {
-    monitores: disponiveis.filter((p) => p.isMonitor),
+    monitores: disponiveis.filter((p) => p.isMonitor && p.turmaId === turmaId),
     guardas: disponiveis.filter((p) => !p.isMonitor && p.turmaId === turmaId),
     byKey: new Map(people.map((p) => [keyOf(p), p])),
   };

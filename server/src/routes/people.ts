@@ -18,7 +18,11 @@ async function turmaValida(turmaId: string | null): Promise<boolean> {
 // vê apenas as da sua turma.
 peopleRouter.get("/", async (req, res) => {
   const monitores = await prisma.person.findMany({
-    where: { active: true, isMonitor: true },
+    where: {
+      active: true,
+      isMonitor: true,
+      ...(isSuperadmin(req) ? {} : { turmaId: req.user?.turmaId ?? "__sem_turma__" }),
+    },
     orderBy: { num: "asc" },
     include: incluirTurma,
   });
@@ -41,13 +45,9 @@ peopleRouter.post("/", async (req, res) => {
   const isMonitor = bool(req.body?.isMonitor);
   if (!nome) return res.status(400).json({ error: "nome é obrigatório" });
 
-  // Instrutor só cadastra guardas na própria turma; monitores são do Comandante.
-  if (isMonitor && !isSuperadmin(req)) {
-    return res.status(403).json({ error: "Apenas o Comandante cadastra monitores." });
-  }
-  // Monitores não têm turma; guardas têm (forçada à do instrutor, se for o caso).
-  const turmaId = isMonitor ? null : turmaAlvo(req, str(req.body?.turmaId, 40) || null);
-  if (!isMonitor && !isSuperadmin(req) && !turmaId) {
+  // Monitores e guardas pertencem a uma turma (forçada à do instrutor/monitor).
+  const turmaId = turmaAlvo(req, str(req.body?.turmaId, 40) || null);
+  if (!isSuperadmin(req) && !turmaId) {
     return res.status(403).json({ error: "Seu usuário não tem turma definida." });
   }
   if (!(await turmaValida(turmaId))) {

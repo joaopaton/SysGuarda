@@ -223,6 +223,25 @@ export default function App({
     }
   };
 
+  const adicionarMonitor = async (
+    num: string,
+    nome: string,
+    turmaId: string | null
+  ) => {
+    if (!nome.trim()) return;
+    try {
+      await api.addPerson({
+        num: num.trim() || "---",
+        nome: nome.trim().toUpperCase(),
+        isMonitor: true,
+        turmaId: isSuper ? turmaId : user?.turma?.id ?? null,
+      });
+      carregarEfetivo();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+
   const removerPessoa = async (id: string) => {
     await api.removePerson(id);
     carregarEfetivo();
@@ -312,6 +331,7 @@ export default function App({
             setNovoNum={setNovoNum}
             setNovoNome={setNovoNome}
             onAdicionar={adicionarGuarda}
+            onAdicionarMonitor={adicionarMonitor}
             onRemover={removerPessoa}
             onToggle={alternarDisponibilidade}
             onDefinirTurma={definirTurma}
@@ -683,6 +703,7 @@ function EfetivoTab({
   setNovoNum,
   setNovoNome,
   onAdicionar,
+  onAdicionarMonitor,
   onRemover,
   onToggle,
   onDefinirTurma,
@@ -697,6 +718,7 @@ function EfetivoTab({
   setNovoNum: (s: string) => void;
   setNovoNome: (s: string) => void;
   onAdicionar: (turmaId: string | null) => void;
+  onAdicionarMonitor: (num: string, nome: string, turmaId: string | null) => void;
   onRemover: (id: string) => void;
   onToggle: (id: string, available: boolean) => void;
   onDefinirTurma: (id: string, turmaId: string | null) => void;
@@ -705,6 +727,14 @@ function EfetivoTab({
   user: MeUser | null;
 }) {
   const [novaTurma, setNovaTurma] = useState("");
+  const [monNum, setMonNum] = useState("");
+  const [monNome, setMonNome] = useState("");
+  const [monTurma, setMonTurma] = useState("");
+  const addMonitor = () => {
+    onAdicionarMonitor(monNum, monNome, monTurma || null);
+    setMonNum("");
+    setMonNome("");
+  };
   const ausentes =
     monitores.filter((m) => !m.available).length +
     guardas.filter((g) => !g.available).length;
@@ -713,17 +743,60 @@ function EfetivoTab({
       <div className="bg-olivaEsc border border-amareloMil p-5 mb-6">
         <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
           <Gem size={16} /> MONITORES — CMT GD TG
+          {!isSuper && user?.turma && (
+            <span className="text-[11px] text-amareloMil font-mono">
+              · {user.turma.codigo} {user.turma.apelido}
+            </span>
+          )}
         </h2>
         <p className="m-0 mb-3.5 text-[11px] text-areia font-mono">
-          &gt; HABILITADOS A COMANDAR A GUARDA
+          &gt; HABILITADOS A COMANDAR A GUARDA (POR TURMA)
         </p>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
+        <div className="flex gap-2.5 flex-wrap mb-3.5">
+          <input
+            placeholder="Nº"
+            value={monNum}
+            onChange={(e) => setMonNum(e.target.value)}
+            className="w-[90px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
+          />
+          <input
+            placeholder="NOME DO MONITOR"
+            value={monNome}
+            onChange={(e) => setMonNome(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addMonitor()}
+            className="flex-1 min-w-[140px] bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
+          />
+          {isSuper && (
+            <select
+              value={monTurma}
+              onChange={(e) => setMonTurma(e.target.value)}
+              className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+            >
+              <option value="">— turma —</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.codigo} {t.apelido}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={addMonitor}
+            className="bg-amareloMil text-preto px-[18px] py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
+          >
+            <Plus size={15} /> MONITOR
+          </button>
+        </div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
           {monitores.map((g) => (
             <Cartao
               key={g.id}
               p={g}
               onRemover={() => onRemover(g.id)}
               onToggle={() => onToggle(g.id, !g.available)}
+              isSuper={isSuper}
+              turmas={turmas}
+              onDefinirTurma={onDefinirTurma}
               destaque
             />
           ))}
@@ -863,7 +936,7 @@ function Cartao({
           </button>
         </span>
       </div>
-      {!destaque && (
+      {(
         <div className="mt-1.5 text-[10px]">
           {isSuper && turmas && onDefinirTurma ? (
             <select

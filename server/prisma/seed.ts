@@ -101,6 +101,12 @@ async function main() {
       create: { ...g, isMonitor: false },
     });
   }
+  // Corneto (243) é o monitor da T2 (os demais monitores o Comandante atribui).
+  await prisma.person.updateMany({
+    where: { num: "243", nome: "CORNETO" },
+    data: { turmaId: turmaPorCodigo.get("T2") ?? null },
+  });
+
   const INSTRUTORES = [
     "SGT SCHÜTZ",
     "SGT ST MARIO GOMES",
