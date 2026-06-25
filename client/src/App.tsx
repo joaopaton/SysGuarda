@@ -360,7 +360,7 @@ export default function App({
   };
 
   return (
-    <div className="min-h-screen text-caqui font-cond">
+    <div className="min-h-screen text-caqui font-cond overflow-x-clip">
       <Header onLogout={onLogout} user={user} />
       <Tabs aba={aba} setAba={setAba} isSuper={isSuper} />
       {isSuper && aba !== "painel" && aba !== "usuarios" && (
@@ -2035,7 +2035,7 @@ function PainelTab({
                   naSemana ? "border-amareloMil" : "border-linha"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
                   <span className="text-[15px] text-amareloMil font-estencil tracking-[2px]">
                     {t.codigo}
                   </span>
