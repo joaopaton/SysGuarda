@@ -1,4 +1,4 @@
-import type { AditamentoConfig, DiaEscala, Pessoa } from "./types";
+import type { AditamentoConfig, DiaEscala, Pessoa } from "./lib/types";
 import { BRASAO } from "./brasao";
 
 const MESES = [

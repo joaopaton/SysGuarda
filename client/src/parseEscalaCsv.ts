@@ -6,7 +6,7 @@
 // Estratégia: detecta em qual COLUNA fica cada dia (pelo cabeçalho) e lê os dados
 // exatamente nessas colunas — assim colunas vazias no meio não desalinham nada.
 
-import { FUNCOES, type DiaEscala, type Funcao, type Pessoa } from "./types";
+import { FUNCOES, type DiaEscala, type Funcao, type Pessoa } from "./lib/types";
 
 const SEP = /[;,\t]/;
 

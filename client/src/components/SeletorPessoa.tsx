@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Pessoa } from "../types";
+import type { Pessoa } from "../lib/types";
 
 interface Props {
   opcoes: Pessoa[];
@@ -30,28 +30,26 @@ export function SeletorPessoa({ opcoes, atual, onSelecionar, onCancelar }: Props
           if (e.key === "Enter" && filtradas.length > 0)
             onSelecionar(filtradas[0]);
         }}
-        className="w-full bg-preto border border-amareloMil text-caquiClaro px-2 py-1 text-xs font-mono tracking-wide box-border"
+        className="w-full bg-superficie border border-verde text-texto rounded-md px-2 py-1 text-xs box-border focus:outline-none"
       />
-      <div className="absolute top-full left-0 right-0 z-50 mt-0.5 bg-preto border border-amareloMil max-h-44 overflow-y-auto shadow-2xl min-w-40">
+      <div className="absolute top-full left-0 right-0 z-50 mt-0.5 bg-superficie border border-borda rounded-md max-h-44 overflow-y-auto shadow-xl min-w-40">
         <div
           onClick={() => onSelecionar({ num: "---", nome: "VAZIO" })}
-          className="px-2.5 py-1.5 text-[11px] text-areia cursor-pointer border-b border-olivaEsc font-mono hover:bg-olivaEsc"
+          className="px-2.5 py-1.5 text-[11px] text-textoSec cursor-pointer border-b border-borda hover:bg-cartaoAlt"
         >
-          — DEIXAR VAZIO —
+          — deixar vazio —
         </div>
         {filtradas.length === 0 ? (
-          <div className="px-2.5 py-2 text-[11px] text-areia font-mono">
-            SEM REGISTRO
-          </div>
+          <div className="px-2.5 py-2 text-[11px] text-textoSec">Sem registro</div>
         ) : (
           filtradas.map((p, i) => (
             <div
               key={i}
               onClick={() => onSelecionar(p)}
-              className="px-2.5 py-1.5 text-xs cursor-pointer flex gap-2 items-center font-mono hover:bg-olivaEsc"
+              className="px-2.5 py-1.5 text-xs cursor-pointer flex gap-2 items-center hover:bg-cartaoAlt"
             >
-              <span className="text-amareloMil font-bold">{p.num}</span>
-              <span className="text-caquiClaro">{p.nome}</span>
+              <span className="text-textoTen font-mono">{p.num}</span>
+              <span className="text-texto">{p.nome}</span>
             </div>
           ))
         )}

@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { api } from "../api";
-import { Star, AlertTriangle, Flag } from "lucide-react";
+import { api } from "../lib/api";
+import { AlertTriangle, LogIn } from "lucide-react";
+import { BRASAO } from "../brasao";
+import { ThemeToggle } from "./ui/ThemeToggle";
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [usuario, setUsuario] = useState("");
@@ -23,58 +25,52 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 font-cond">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-fundo text-texto">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <form
         onSubmit={entrar}
-        className="w-full max-w-[360px] bg-olivaEsc border border-amareloMil p-7"
+        className="w-full max-w-[380px] bg-cartao border border-borda rounded-2xl p-7"
       >
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-11 h-11 border-2 border-amareloMil rounded-full flex items-center justify-center bg-oliva shrink-0 text-amareloMil">
-            <Star size={22} className="fill-amareloMil" />
-          </div>
+        <div className="flex items-center gap-3 mb-6">
+          <img src={BRASAO} alt="Brasão" className="w-12 h-12 object-contain shrink-0" />
           <div>
-            <h1 className="m-0 text-lg font-bold text-caquiClaro font-estencil tracking-[2px]">
-              SYSGUARDA
-            </h1>
-            <p className="m-0 text-[10px] text-amareloMil tracking-[3px] font-mono">
-              ACESSO RESTRITO
+            <h1 className="text-lg font-bold text-texto">SysGuarda</h1>
+            <p className="text-xs text-textoSec font-mono tracking-wide">
+              TG 05-003 · acesso restrito
             </p>
           </div>
         </div>
-        <div className="h-0.5 my-4 bg-[repeating-linear-gradient(90deg,#d4b942_0_10px,transparent_10px_18px)]" />
 
         {erro && (
-          <div className="mb-3 border border-vermelho bg-vermelho/20 text-caquiClaro px-3 py-2 text-xs font-mono flex items-center gap-2">
-            <AlertTriangle size={14} className="shrink-0" /> {erro}
+          <div className="mb-4 rounded-lg border border-vermelho bg-vermelhoTint text-vermelho px-3 py-2 text-sm flex items-center gap-2">
+            <AlertTriangle size={15} className="shrink-0" /> {erro}
           </div>
         )}
 
-        <label className="text-[10px] text-areia block mb-1 tracking-[2px] font-mono">
-          USUÁRIO
-        </label>
+        <label className="block mb-1.5 text-xs font-medium text-textoSec">Usuário</label>
         <input
           autoFocus
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
-          className="w-full bg-preto border border-linha text-caquiClaro px-3 py-2.5 text-sm mb-3 font-mono"
+          className="w-full bg-superficie border border-borda text-texto rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-verde"
         />
 
-        <label className="text-[10px] text-areia block mb-1 tracking-[2px] font-mono">
-          SENHA
-        </label>
+        <label className="block mb-1.5 text-xs font-medium text-textoSec">Senha</label>
         <input
           type="password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          className="w-full bg-preto border border-linha text-caquiClaro px-3 py-2.5 text-sm mb-5 font-mono"
+          className="w-full bg-superficie border border-borda text-texto rounded-lg px-3 py-2.5 text-sm mb-6 focus:outline-none focus:border-verde"
         />
 
         <button
           type="submit"
           disabled={enviando}
-          className="w-full bg-amareloMil text-preto py-3 text-sm font-bold tracking-[2px] font-estencil disabled:opacity-60 inline-flex items-center justify-center gap-2"
+          className="w-full bg-verde text-noVerde rounded-lg py-3 text-sm font-semibold disabled:opacity-60 inline-flex items-center justify-center gap-2 hover:bg-verdeEsc transition-colors"
         >
-          <Flag size={16} /> {enviando ? "ENTRANDO…" : "ENTRAR"}
+          <LogIn size={16} /> {enviando ? "Entrando…" : "Entrar"}
         </button>
       </form>
     </div>
