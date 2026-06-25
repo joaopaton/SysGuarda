@@ -517,10 +517,10 @@ function Header({
         </div>
         <div className="min-w-0">
           <h1 className="m-0 text-lg sm:text-2xl font-bold text-caquiClaro font-estencil tracking-[2px] leading-tight">
-            ESCALA DE SERVIÇO · T2
+            ESCALA DE SERVIÇO · TG 05-003
           </h1>
           <p className="mt-0.5 text-[10px] sm:text-[11px] text-amareloMil tracking-[2px] sm:tracking-[4px] font-mono truncate">
-            // PREVISÃO OPERACIONAL DE GUARDA
+            // TG 05-003 · LONDRINA-PR
           </p>
         </div>
         <div className="ml-auto flex items-center gap-3 shrink-0">

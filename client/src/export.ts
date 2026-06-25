@@ -19,7 +19,7 @@ function baixar(nome: string, conteudo: string, mime: string) {
 export function exportarEscalaCSV(dias: string[], escala: DiaEscala[]) {
   const sep = ";";
   const linhas: string[] = [];
-  linhas.push(["ESCALA DE SERVIÇO T2"].join(sep));
+  linhas.push(["ESCALA DE SERVIÇO TG 05-003"].join(sep));
   linhas.push([`Período: ${dias[0]} a ${dias[dias.length - 1]}`].join(sep));
   linhas.push("");
   linhas.push(["FUNÇÃO", ...dias].map(csvCampo).join(sep));
@@ -44,7 +44,7 @@ export function exportarEscalaCSV(dias: string[], escala: DiaEscala[]) {
 /** Exporta a escala em PDF via janela de impressão (paisagem). */
 export function exportarPDF(dias: string[], escala: DiaEscala[]) {
   const periodo = `${dias[0]} a ${dias[dias.length - 1]}`;
-  let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Escala de Serviço T2</title>
+  let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Escala de Serviço TG 05-003</title>
   <style>
     @page { size: landscape; margin: 12mm; }
     * { font-family: Arial, sans-serif; box-sizing: border-box; }
@@ -60,9 +60,9 @@ export function exportarPDF(dias: string[], escala: DiaEscala[]) {
     .star { font-size: 22px; }
   </style></head><body>
   <div style="display:flex;align-items:center;gap:10px;border-bottom:3px solid #3a4220;padding-bottom:8px;margin-bottom:6px;">
-    <span class="star">★</span><div><h1>ESCALA DE SERVIÇO · T2</h1></div>
+    <span class="star">★</span><div><h1>ESCALA DE SERVIÇO · TG 05-003</h1></div>
   </div>
-  <div class="sub">PREVISÃO OPERACIONAL DE GUARDA &nbsp;·&nbsp; PERÍODO: ${periodo}</div>
+  <div class="sub">TG 05-003 · LONDRINA-PR &nbsp;·&nbsp; PERÍODO: ${periodo}</div>
   <table><thead><tr><th>FUNÇÃO</th>`;
   dias.forEach((d) => (html += `<th>${d}</th>`));
   html += `</tr></thead><tbody>`;
@@ -152,7 +152,7 @@ export function exportarHorasPDF(
     .foot { margin-top: 16px; font-size: 9px; color: #777; text-align: center; letter-spacing: 1px; }
   </style></head><body>
   <div style="display:flex;align-items:center;gap:10px;border-bottom:3px solid #3a4220;padding-bottom:8px;margin-bottom:6px;">
-    <span style="font-size:22px">★</span><div><h1>HORAS DE SERVIÇO · T2</h1></div>
+    <span style="font-size:22px">★</span><div><h1>HORAS DE SERVIÇO · TG 05-003</h1></div>
   </div>
   <div class="sub">PERMANÊNCIA 6H &nbsp;·&nbsp; NOITE/CMT 12H</div>
   ${tabelas}
