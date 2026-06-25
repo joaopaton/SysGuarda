@@ -1,30 +1,71 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Tema DIA (claro) — padrão ===== */
 :root {
+  color-scheme: light;
+  --fundo: #f4f7f3;
+  --superficie: #ffffff;
+  --cartao: #ffffff;
+  --cartaoAlt: #f1f5f0;
+  --borda: #e3e8e2;
+  --bordaForte: #cdd6cc;
+  --texto: #14171c;
+  --textoSec: #5b6573;
+  --textoTen: #8a94a3;
+  --verde: #16a34a;
+  --verdeEsc: #15803d;
+  --verdeTint: rgba(34, 197, 94, 0.12);
+  --verdeTexto: #15803d;
+  --noVerde: #ffffff;
+  --vermelho: #dc2626;
+  --vermelhoTint: rgba(220, 38, 38, 0.12);
+  --ambar: #d97706;
+  --ambarTint: rgba(217, 119, 6, 0.14);
+}
+
+/* ===== Tema NOITE (escuro) ===== */
+.dark {
   color-scheme: dark;
+  --fundo: #0d0f12;
+  --superficie: #14171c;
+  --cartao: #161a20;
+  --cartaoAlt: #1b2027;
+  --borda: #242c35;
+  --bordaForte: #313b46;
+  --texto: #e6e9ef;
+  --textoSec: #8a94a3;
+  --textoTen: #6f7a89;
+  --verde: #22c55e;
+  --verdeEsc: #16a34a;
+  --verdeTint: rgba(34, 197, 94, 0.14);
+  --verdeTexto: #4ade80;
+  --noVerde: #06210f;
+  --vermelho: #ef4444;
+  --vermelhoTint: rgba(239, 68, 68, 0.16);
+  --ambar: #f59e0b;
+  --ambarTint: rgba(245, 158, 11, 0.16);
 }
 
 body {
   margin: 0;
-  /* textura sutil de camuflagem via gradientes radiais */
-  background:
-    radial-gradient(circle at 15% 20%, #4d582933 0 12%, transparent 13%),
-    radial-gradient(circle at 70% 60%, #2a301755 0 18%, transparent 19%),
-    radial-gradient(circle at 40% 85%, #5a6b3522 0 14%, transparent 15%),
-    #3a4220;
   min-height: 100vh;
-  font-family: "Oswald", "Arial Narrow", sans-serif;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: "Inter", system-ui, "Segoe UI", sans-serif;
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 ::-webkit-scrollbar-track {
-  background: #2a3017;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #5a6b35;
+  background: var(--bordaForte);
+  border-radius: 999px;
 }

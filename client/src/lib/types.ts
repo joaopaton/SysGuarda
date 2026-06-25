@@ -72,6 +72,50 @@ export interface HoursReport {
   semTurma: HoursPessoa[];
 }
 
+export type AttendanceStatus = "PRESENTE" | "FALTA" | "JUSTIFICADO";
+
+export interface AttendanceRow {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  status: AttendanceStatus;
+}
+
+export interface AttendanceDTO {
+  date: string;
+  turmaId: string | null;
+  linhas: AttendanceRow[];
+}
+
+export interface MissaoLancamento {
+  id: string;
+  date: string | null;
+  descricao: string;
+  horas: number;
+}
+
+export interface MissoesPessoa {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  total: number;
+  abaixo: boolean;
+  lancamentos: MissaoLancamento[];
+}
+
+export interface MissoesTurma {
+  id: string;
+  codigo: string;
+  apelido: string;
+  pessoas: MissoesPessoa[];
+}
+
+export interface MissoesReport {
+  meta: number;
+  turmas: MissoesTurma[];
+  semTurma: MissoesPessoa[];
+}
+
 export interface Instrutor {
   id: string;
   nome: string;
@@ -124,8 +168,8 @@ export interface AditamentoConfig {
 }
 
 export const COR_FUNC: Record<Funcao, string> = {
-  "Cmt Gd TG": "#d4b942",
-  "Permanência Manhã": "#8a9a4d",
-  "Permanência Tarde": "#a89968",
-  "Guardas do TG": "#c9bd9e",
+  "Cmt Gd TG": "#22c55e",
+  "Permanência Manhã": "#3b82f6",
+  "Permanência Tarde": "#8b5cf6",
+  "Guardas do TG": "#f59e0b",
 };
