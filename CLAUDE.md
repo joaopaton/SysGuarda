@@ -53,12 +53,13 @@ Sessão **stateless por cookie** (`sg_session`): token = payload `{ uid, exp }` 
 
 ## Arquitetura HTTP
 
-- Rotas em `server/src/routes/`: `turmas`, `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`. `/api/users` é montada atrás de `requireSuperadmin`. `POST /api/people/atribuir-turma` (superadmin) move várias pessoas de turma de uma vez (seleção em massa na aba EFETIVO); `POST /api/people/importar-turmas` (superadmin) atribui turmas por CSV (`num;nome;turma`; turma por código `T1`, apelido `Caveira` ou número `1`; casa por `num+nome` ou só nome).
+- Rotas em `server/src/routes/`: `turmas`, `dashboard`, `people`, `schedule`, `history`, `aditamento`, `users` — montadas sob `/api/*` em `server/src/index.ts`. `/api/users` é montada atrás de `requireSuperadmin`. `GET /api/dashboard` (superadmin) devolve o resumo por turma (efetivo/ausentes/monitores/escalas/última + próxima turma do rodízio) para o **Painel do Comando**. `POST /api/people/atribuir-turma` (superadmin) move várias pessoas de turma de uma vez (seleção em massa na aba EFETIVO); `POST /api/people/importar-turmas` (superadmin) atribui turmas por CSV (`num;nome;turma`; turma por código `T1`, apelido `Caveira` ou número `1`; casa por `num+nome` ou só nome).
 - `/api/me` retorna `{ authenticated, user: { username, role, turma } }`; o client usa isso (via `AuthGate`) para decidir o que mostrar.
 - Em produção o **mesmo processo Node** serve a API e o frontend buildado (`CLIENT_DIST`, fallback SPA para `index.html`). Em dev o Vite faz proxy de `/api`.
 - Client: `client/src/api.ts` centraliza o fetch (`credentials: "include"`). `App.tsx` é a tela principal com abas (`escala`/`guardas`/`config`/`usuarios`); `AuthGate.tsx` + `Login.tsx` controlam o acesso. Exportação PDF (paisagem) e CSV (`;` + BOM para Excel PT-BR) em `client/src/export.ts`.
 - O Aditamento (documento oficial em PDF/impressão) é montado 100% no client: `client/src/aditamento.ts` (`buildAditamentoHTML`) + `components/AditamentoModal.tsx`. Pode ser gerado a partir da escala em memória **ou** importando um CSV de escala via `client/src/parseEscalaCsv.ts` (parser tolerante que faz o round-trip do CSV exportado por `export.ts`: grade função×dia, célula `NUM NOME`, rótulo da função herdado nas linhas de vaga seguintes).
 - **Mobile-first**: a UI usa breakpoints `sm:`/`md:` do Tailwind; o padrão (sem prefixo) é o layout de celular. A grade da escala (`EscalaTab`) rola horizontalmente no celular (`min-w-[720px]`).
+- **Abas/visão por papel** (`App.tsx`): superadmin vê `PAINEL` (cards por turma, `PainelTab`) + `USUÁRIOS` e uma barra de **filtro global de turma** (`FiltroTurma`, estado `turmaFoco`, "TODAS"/T1..T4) que filtra EFETIVO e SALVAS no client e define a turma padrão da geração. Instrutor/monitor não veem o filtro (já presos à sua turma).
 
 ## Deploy
 

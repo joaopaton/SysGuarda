@@ -38,6 +38,8 @@ export const api = {
   // Turmas
   getTurmas: () => req<Turma[]>("/api/turmas"),
 
+  getDashboard: () => req<import("./types").Dashboard>("/api/dashboard"),
+
   // Usuários
   getUsers: () => req<Usuario[]>("/api/users"),
   addUser: (

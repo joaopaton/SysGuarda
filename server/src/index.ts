@@ -20,6 +20,7 @@ import { historyRouter } from "./routes/history.js";
 import { aditamentoRouter } from "./routes/aditamento.js";
 import { usersRouter } from "./routes/users.js";
 import { turmasRouter } from "./routes/turmas.js";
+import { dashboardRouter } from "./routes/dashboard.js";
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.post("/api/logout", (_req, res) => {
 // ===== Rotas protegidas =====
 app.use("/api", requireAuth);
 app.use("/api/turmas", turmasRouter);
+app.use("/api/dashboard", dashboardRouter);
 app.use("/api/people", peopleRouter);
 app.use("/api/schedule", scheduleRouter);
 app.use("/api/history", historyRouter);

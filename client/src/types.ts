@@ -71,6 +71,25 @@ export interface Usuario {
   turma?: TurmaResumo | null;
 }
 
+export interface TurmaResumoPainel {
+  id: string;
+  codigo: string;
+  apelido: string;
+  ordem: number;
+  guardas: number;
+  guardasAusentes: number;
+  monitores: number;
+  monitoresAusentes: number;
+  escalas: number;
+  ultimaEscala: string | null;
+}
+
+export interface Dashboard {
+  proximaTurmaId: string | null;
+  turmas: TurmaResumoPainel[];
+  semTurma: number;
+}
+
 export interface AditamentoConfig {
   tg: string;
   cidade: string;
