@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Clock, Flag, FileSpreadsheet, Printer, Upload } from "lucide-react";
+import { Clock, FileSpreadsheet, Printer, Upload } from "lucide-react";
 import { api } from "../../lib/api";
 import type { HoursReport } from "../../lib/types";
 import { NOME_MES } from "../../lib/constants";
@@ -10,14 +10,12 @@ import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { MissoesSecao } from "./MissoesSecao";
 
 export function HorasTab() {
   const { isSuper } = useAppData();
   const { turmaFoco, setErro } = useNav();
   const [rep, setRep] = useState<HoursReport | null>(null);
   const [impMsg, setImpMsg] = useState<string | null>(null);
-  const [sub, setSub] = useState<"servico" | "missoes">("servico");
 
   const carregar = useCallback(async () => {
     try {
@@ -69,29 +67,10 @@ export function HorasTab() {
 
   return (
     <div>
-      <div className="inline-flex gap-1 p-1 mb-5 rounded-lg bg-cartaoAlt border border-borda">
-        {(["servico", "missoes"] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setSub(s)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium inline-flex items-center gap-1.5 transition-colors ${
-              sub === s ? "bg-verde text-noVerde" : "text-textoSec hover:text-texto"
-            }`}
-          >
-            {s === "servico" ? <Clock size={15} /> : <Flag size={15} />}
-            {s === "servico" ? "Serviço" : "Missões"}
-          </button>
-        ))}
-      </div>
-
-      {sub === "missoes" ? (
-        <MissoesSecao />
-      ) : (
-        <>
-          <SectionHeader
-            title="Horas de serviço"
-            subtitle="Guardas fechadas + saldo da ficha · manhã/tarde 6h · noite 12h."
-            right={
+      <SectionHeader
+        title="Horas de serviço"
+        subtitle="Guardas fechadas + saldo da ficha · manhã/tarde 6h · noite 12h."
+        right={
               <>
                 <Button variant="outline" size="sm" onClick={exportarCsv}>
                   <FileSpreadsheet size={14} /> CSV
@@ -169,8 +148,6 @@ export function HorasTab() {
                 </div>
               ))
           )}
-        </>
-      )}
     </div>
   );
 }

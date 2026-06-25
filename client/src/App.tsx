@@ -10,6 +10,7 @@ import { EscalaTab } from "./features/escala/EscalaTab";
 import { SalvasTab } from "./features/salvas/SalvasTab";
 import { PresencaTab } from "./features/presenca/PresencaTab";
 import { HorasTab } from "./features/horas/HorasTab";
+import { MissoesSecao } from "./features/horas/MissoesSecao";
 import { EfetivoTab } from "./features/efetivo/EfetivoTab";
 import { UsuariosTab } from "./features/usuarios/UsuariosTab";
 
@@ -29,6 +30,8 @@ function Conteudo() {
       return <PresencaTab />;
     case "horas":
       return <HorasTab />;
+    case "missoes":
+      return <MissoesSecao />;
     case "efetivo":
       return <EfetivoTab />;
     case "usuarios":

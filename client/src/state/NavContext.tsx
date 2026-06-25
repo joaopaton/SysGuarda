@@ -12,6 +12,7 @@ export type Secao =
   | "salvas"
   | "presenca"
   | "horas"
+  | "missoes"
   | "efetivo"
   | "comando"
   | "usuarios";

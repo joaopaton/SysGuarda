@@ -5,6 +5,7 @@ import {
   Archive,
   ClipboardCheck,
   Clock,
+  Flag,
   Users,
   UserCog,
   LogOut,
@@ -29,7 +30,8 @@ const GRUPOS: { grupo: string; itens: Item[] }[] = [
       { secao: "escala", label: "Escala", icon: CalendarDays },
       { secao: "salvas", label: "Escalas salvas", icon: Archive },
       { secao: "presenca", label: "Presença", icon: ClipboardCheck },
-      { secao: "horas", label: "Horas", icon: Clock },
+      { secao: "horas", label: "Horas de serviço", icon: Clock },
+      { secao: "missoes", label: "Missões", icon: Flag },
     ],
   },
   {
