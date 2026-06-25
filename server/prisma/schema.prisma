@@ -97,12 +97,26 @@ model ManualHistory {
   @@unique([num, nome])
 }
 
+/// Saldo inicial de horas de serviço (FICHA importada), por pessoa e mês (1..12).
+/// Somado às horas calculadas das escalas FECHADAS no relatório de horas.
+model ManualHours {
+  id    String @id @default(cuid())
+  num   String
+  nome  String
+  mes   Int // 1..12
+  horas Int    @default(0)
+
+  @@unique([num, nome, mes])
+}
+
 /// Uma escala gerada (terça → segunda, 7 dias). Pertence a uma turma (a que
 /// está de semana no rodízio).
 model Schedule {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   startDate DateTime // terça inicial (00:00)
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  status    String    @default("ABERTA") // "ABERTA" | "FECHADA"
+  closedAt  DateTime?
 
   turmaId String?
   turma   Turma?  @relation(fields: [turmaId], references: [id], onDelete: SetNull)

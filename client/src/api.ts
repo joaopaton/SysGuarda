@@ -138,6 +138,26 @@ export const api = {
   remove: (id: string) =>
     req<void>(`/api/schedule/${id}`, { method: "DELETE" }),
 
+  fecharEscala: (id: string) =>
+    req<{ id: string; status: string }>(`/api/schedule/${id}/fechar`, {
+      method: "POST",
+    }),
+  reabrirEscala: (id: string) =>
+    req<{ id: string; status: string }>(`/api/schedule/${id}/reabrir`, {
+      method: "POST",
+    }),
+
+  // Horas de serviço
+  getHours: (turmaId?: string | null) =>
+    req<import("./types").HoursReport>(
+      `/api/hours${turmaId ? `?turmaId=${encodeURIComponent(turmaId)}` : ""}`
+    ),
+  importarFicha: (csv: string) =>
+    req<{ importadas: number }>("/api/hours/importar-ficha", {
+      method: "POST",
+      body: JSON.stringify({ csv }),
+    }),
+
   history: (id: string) =>
     req<{ num: string; nome: string; guardas: number }[]>(
       `/api/schedule/${id}/history`

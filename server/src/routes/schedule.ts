@@ -79,7 +79,8 @@ async function historicoDoBanco(turmaId: string | null, limite = 4): Promise<His
 function escalaParaDTO(
   inicio: Date,
   escala: Escala,
-  turma: { id: string; codigo: string; apelido: string } | null
+  turma: { id: string; codigo: string; apelido: string } | null,
+  status: string = "ABERTA"
 ) {
   return {
     startDate: inicio.toISOString(),
@@ -87,6 +88,7 @@ function escalaParaDTO(
     escala,
     turmaId: turma?.id ?? null,
     turma,
+    status,
   };
 }
 
@@ -180,6 +182,11 @@ scheduleRouter.put("/:id", async (req, res) => {
   if (!podeTurma(req, existe.turmaId)) {
     return res.status(403).json({ error: "Sem acesso a esta escala." });
   }
+  if (existe.status === "FECHADA") {
+    return res
+      .status(409)
+      .json({ error: "Escala FECHADA — reabra antes de editar." });
+  }
   const turmaId = turmaAlvo(req, str(req.body?.turmaId, 40) || existe.turmaId);
 
   const inicio = ajustarParaTerca(new Date(startDate));
@@ -192,6 +199,34 @@ scheduleRouter.put("/:id", async (req, res) => {
     }),
   ]);
   res.json({ id: req.params.id });
+});
+
+// POST /api/schedule/:id/fechar  -> classifica a guarda como FECHADA (trava edição)
+scheduleRouter.post("/:id/fechar", async (req, res) => {
+  const sch = await prisma.schedule.findUnique({ where: { id: req.params.id } });
+  if (!sch) return res.status(404).json({ error: "não encontrada" });
+  if (!podeTurma(req, sch.turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta escala." });
+  }
+  await prisma.schedule.update({
+    where: { id: req.params.id },
+    data: { status: "FECHADA", closedAt: new Date() },
+  });
+  res.json({ id: req.params.id, status: "FECHADA" });
+});
+
+// POST /api/schedule/:id/reabrir  -> volta para ABERTA (permite editar de novo)
+scheduleRouter.post("/:id/reabrir", async (req, res) => {
+  const sch = await prisma.schedule.findUnique({ where: { id: req.params.id } });
+  if (!sch) return res.status(404).json({ error: "não encontrada" });
+  if (!podeTurma(req, sch.turmaId)) {
+    return res.status(403).json({ error: "Sem acesso a esta escala." });
+  }
+  await prisma.schedule.update({
+    where: { id: req.params.id },
+    data: { status: "ABERTA", closedAt: null },
+  });
+  res.json({ id: req.params.id, status: "ABERTA" });
 });
 
 // DELETE /api/schedule/:id
@@ -210,7 +245,13 @@ scheduleRouter.get("/", async (req, res) => {
   const lista = await prisma.schedule.findMany({
     where: isSuperadmin(req) ? {} : { turmaId: req.user?.turmaId ?? "__sem_turma__" },
     orderBy: { startDate: "desc" },
-    select: { id: true, startDate: true, createdAt: true, ...incluirTurma },
+    select: {
+      id: true,
+      startDate: true,
+      createdAt: true,
+      status: true,
+      ...incluirTurma,
+    },
   });
   res.json(lista);
 });
@@ -234,7 +275,7 @@ scheduleRouter.get("/:id", async (req, res) => {
       nome: a.personNome,
     };
   }
-  res.json(escalaParaDTO(sch.startDate, escala, sch.turma));
+  res.json(escalaParaDTO(sch.startDate, escala, sch.turma, sch.status));
 });
 
 // GET /api/schedule/:id/history -> contagem por pessoa (CSV no client)

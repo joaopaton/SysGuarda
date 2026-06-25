@@ -42,9 +42,19 @@ import {
   FolderOpen,
   LayoutDashboard,
   ChevronRight,
+  Clock,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
-type Aba = "painel" | "escala" | "guardas" | "config" | "usuarios" | "salvas";
+type Aba =
+  | "painel"
+  | "escala"
+  | "guardas"
+  | "config"
+  | "usuarios"
+  | "salvas"
+  | "horas";
 type Editando = { dia: number; func: (typeof FUNCOES)[number]; idx: number } | null;
 
 function proximaTercaISO(): string {
@@ -300,6 +310,31 @@ export default function App({
     }
   };
 
+  const fecharGuarda = async () => {
+    if (!dto || !scheduleId) return;
+    setErro(null);
+    setMsg(null);
+    try {
+      await api.fecharEscala(scheduleId);
+      setDto((d) => (d ? { ...d, status: "FECHADA" } : d));
+      setMsg("Guarda FECHADA — horas contabilizadas no relatório.");
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+
+  const reabrirGuarda = async () => {
+    if (!dto || !scheduleId) return;
+    setErro(null);
+    try {
+      await api.reabrirEscala(scheduleId);
+      setDto((d) => (d ? { ...d, status: "ABERTA" } : d));
+      setMsg("Guarda reaberta para edição.");
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  };
+
   const baixarHistorico = () => {
     if (!dto) return;
     const cont: Record<string, { num: string; nome: string; guardas: number }> = {};
@@ -405,6 +440,16 @@ export default function App({
             onImportarEscala={importarEscalaCsv}
             onVerSalvas={() => setAba("salvas")}
             salvoId={scheduleId}
+            onFechar={fecharGuarda}
+            onReabrir={reabrirGuarda}
+          />
+        )}
+
+        {aba === "horas" && (
+          <HorasTab
+            isSuper={isSuper}
+            turmaFoco={turmaFoco}
+            onErro={setErro}
           />
         )}
 
@@ -511,6 +556,7 @@ function Tabs({
       : []),
     ["escala", "ESCALA", CalendarDays],
     ["salvas", "SALVAS", Archive],
+    ["horas", "HORAS", Clock],
     ["guardas", "EFETIVO", Users],
     ["config", "COMANDO", Settings],
     ...(isSuper
@@ -1161,6 +1207,8 @@ function EscalaTab({
   onImportarEscala,
   onVerSalvas,
   salvoId,
+  onFechar,
+  onReabrir,
 }: {
   dto: EscalaDTO | null;
   monitores: Person[];
@@ -1183,6 +1231,8 @@ function EscalaTab({
   onImportarEscala: (file: File) => void;
   onVerSalvas: () => void;
   salvoId: string | null;
+  onFechar: () => void;
+  onReabrir: () => void;
 }) {
   if (!dto) {
     return (
@@ -1226,6 +1276,7 @@ function EscalaTab({
   // monitoresCount vem do backend já filtrado por disponibilidade.
   const monitoresDisp = dto.monitoresCount ?? monitores.length;
   const monitorRepete = dias.length > monitoresDisp;
+  const fechada = dto.status === "FECHADA";
 
   return (
     <div>
@@ -1238,9 +1289,19 @@ function EscalaTab({
                 {dto.turma.codigo} · {dto.turma.apelido}
               </span>
             )}
+            {fechada && (
+              <span className="text-[11px] bg-verdeMil text-caquiClaro px-2 py-0.5 tracking-wide font-mono inline-flex items-center gap-1">
+                <Lock size={11} /> FECHADA
+              </span>
+            )}
           </h2>
           <p className="mt-1 text-areia text-[11px] font-mono">
-            {salvoId ? (
+            {fechada ? (
+              <span className="text-verdeBrilho inline-flex items-center gap-1.5">
+                <Lock size={12} /> GUARDA FECHADA · HORAS CONTABILIZADAS ·
+                SOMENTE LEITURA
+              </span>
+            ) : salvoId ? (
               <span className="text-verdeBrilho inline-flex items-center gap-1.5">
                 <Archive size={12} /> EDITANDO ESCALA SALVA · &gt; TOQUE NO NOME
                 PARA SUBSTITUIR
@@ -1254,9 +1315,11 @@ function EscalaTab({
           <BtnAcao onClick={onVerSalvas} variant="outline">
             <Archive size={14} /> SALVAS
           </BtnAcao>
-          <BtnAcao onClick={onReembaralhar} variant="outline">
-            <Shuffle size={14} /> REEMBARALHAR
-          </BtnAcao>
+          {!fechada && (
+            <BtnAcao onClick={onReembaralhar} variant="outline">
+              <Shuffle size={14} /> REEMBARALHAR
+            </BtnAcao>
+          )}
           <BtnAcao onClick={onAditamento} variant="amarelo">
             <FileText size={14} /> ADITAMENTO
           </BtnAcao>
@@ -1275,10 +1338,22 @@ function EscalaTab({
           <BtnAcao onClick={onHistorico} variant="verde">
             <Download size={14} /> HISTÓRICO
           </BtnAcao>
-          <BtnAcao onClick={onSalvar} variant="amarelo">
-            <Save size={14} />{" "}
-            {salvando ? "SALVANDO…" : salvoId ? "ATUALIZAR" : "SALVAR"}
-          </BtnAcao>
+          {!fechada && (
+            <BtnAcao onClick={onSalvar} variant="amarelo">
+              <Save size={14} />{" "}
+              {salvando ? "SALVANDO…" : salvoId ? "ATUALIZAR" : "SALVAR"}
+            </BtnAcao>
+          )}
+          {salvoId && !fechada && (
+            <BtnAcao onClick={onFechar} variant="verde">
+              <Lock size={14} /> FECHAR GUARDA
+            </BtnAcao>
+          )}
+          {fechada && (
+            <BtnAcao onClick={onReabrir} variant="outline">
+              <Unlock size={14} /> REABRIR
+            </BtnAcao>
+          )}
         </div>
       </div>
 
@@ -1347,7 +1422,7 @@ function EscalaTab({
                           editando?.dia === dia &&
                           editando?.func === func &&
                           editando?.idx === idx;
-                        return esta ? (
+                        return esta && !fechada ? (
                           <SeletorPessoa
                             key={idx}
                             atual={g}
@@ -1358,9 +1433,13 @@ function EscalaTab({
                         ) : (
                           <div
                             key={idx}
-                            onClick={() => setEditando({ dia, func, idx })}
-                            title="Substituir"
-                            className="bg-preto px-2 py-1 mb-1 cursor-pointer text-[11px] flex gap-1.5 items-center font-mono hover:bg-olivaClaro"
+                            onClick={() =>
+                              !fechada && setEditando({ dia, func, idx })
+                            }
+                            title={fechada ? "Escala fechada" : "Substituir"}
+                            className={`bg-preto px-2 py-1 mb-1 text-[11px] flex gap-1.5 items-center font-mono ${
+                              fechada ? "" : "cursor-pointer hover:bg-olivaClaro"
+                            }`}
                             style={{
                               border: `1px solid ${cor}44`,
                               borderLeft: `2px solid ${cor}`,
@@ -1663,6 +1742,7 @@ function SalvasTab({
       id: string;
       startDate: string;
       createdAt: string;
+      status?: string;
       turma?: { codigo: string; apelido: string } | null;
     }[]
   >([]);
@@ -1747,6 +1827,11 @@ function SalvasTab({
                   {s.turma && (
                     <span className="text-[9px] bg-amareloMil text-preto px-1.5 py-0.5 tracking-wide">
                       {s.turma.codigo} · {s.turma.apelido}
+                    </span>
+                  )}
+                  {s.status === "FECHADA" && (
+                    <span className="text-[9px] bg-verdeMil text-caquiClaro px-1.5 py-0.5 tracking-wide inline-flex items-center gap-1">
+                      <Lock size={9} /> FECHADA
                     </span>
                   )}
                   {s.id === currentId && (
@@ -1944,6 +2029,202 @@ function Stat({
     <div className="bg-preto border border-linha py-2">
       <div className={`text-xl font-bold ${cor}`}>{n}</div>
       <div className="text-[9px] text-areia tracking-wide">{label}</div>
+    </div>
+  );
+}
+
+const NOME_MES = [
+  "", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN",
+  "JUL", "AGO", "SET", "OUT", "NOV", "DEZ",
+];
+
+function HorasTab({
+  isSuper,
+  turmaFoco,
+  onErro,
+}: {
+  isSuper: boolean;
+  turmaFoco: string;
+  onErro: (e: string | null) => void;
+}) {
+  const [rep, setRep] = useState<import("./types").HoursReport | null>(null);
+  const [impMsg, setImpMsg] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      setRep(await api.getHours(isSuper ? turmaFoco || null : null));
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  }, [isSuper, turmaFoco, onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const importarFicha = async (file: File) => {
+    setImpMsg(null);
+    try {
+      const r = await api.importarFicha(await file.text());
+      setImpMsg(`${r.importadas} registro(s) importado(s).`);
+      carregar();
+    } catch (e) {
+      setImpMsg(`Erro: ${(e as Error).message}`);
+    }
+  };
+
+  const exportarCsv = () => {
+    if (!rep) return;
+    const sep = ";";
+    const linhas: string[] = ["HORAS DE SERVIÇO"];
+    const cab = ["TURMA", "Nº", "NOME", ...rep.meses.map((m) => NOME_MES[m]), "TOTAL"];
+    linhas.push(cab.join(sep));
+    const grupos = [
+      ...rep.turmas.map((t) => [`${t.codigo} ${t.apelido}`, t.pessoas] as const),
+      ...(rep.semTurma.length ? [["SEM TURMA", rep.semTurma] as const] : []),
+    ];
+    for (const [nome, pessoas] of grupos)
+      for (const p of pessoas)
+        linhas.push(
+          [
+            nome,
+            p.num,
+            p.nome,
+            ...rep.meses.map((m) => p.meses[m] ?? 0),
+            p.total,
+          ].join(sep)
+        );
+    const blob = new Blob(["﻿" + linhas.join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "horas_servico.csv";
+    a.click();
+  };
+
+  const grupos = rep
+    ? [
+        ...rep.turmas.map((t) => ({
+          titulo: `${t.codigo} · ${t.apelido}`,
+          pessoas: t.pessoas,
+        })),
+        ...(rep.semTurma.length
+          ? [{ titulo: "SEM TURMA", pessoas: rep.semTurma }]
+          : []),
+      ]
+    : [];
+
+  return (
+    <div>
+      <div className="flex items-end justify-between flex-wrap gap-2 mb-4">
+        <div>
+          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+            <Clock size={16} /> HORAS DE SERVIÇO
+          </h2>
+          <p className="mt-1 text-areia text-[11px] font-mono">
+            &gt; SOMA DAS GUARDAS FECHADAS + SALDO DA FICHA · MANHÃ/TARDE 6H ·
+            NOITE 12H
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <BtnAcao onClick={exportarCsv} variant="areia">
+            <FileSpreadsheet size={14} /> CSV
+          </BtnAcao>
+          {isSuper && (
+            <label className="bg-verdeMil text-caquiClaro px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5 cursor-pointer">
+              <Upload size={14} /> IMPORTAR FICHA
+              <input
+                type="file"
+                accept=".csv,.txt,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) importarFicha(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+
+      {impMsg && (
+        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono">
+          {impMsg}
+        </div>
+      )}
+
+      {!rep ? (
+        <p className="text-areia text-[12px] font-mono">CARREGANDO…</p>
+      ) : grupos.every((g) => g.pessoas.length === 0) ? (
+        <p className="text-areia text-[12px] font-mono">
+          &gt; SEM HORAS AINDA. FECHE UMA GUARDA OU IMPORTE A FICHA.
+        </p>
+      ) : (
+        grupos
+          .filter((g) => g.pessoas.length > 0)
+          .map((g) => (
+            <div key={g.titulo} className="mb-6">
+              <h3 className="text-[13px] text-amareloMil font-mono tracking-[2px] mb-2">
+                {g.titulo}
+              </h3>
+              <div className="border border-linha overflow-x-auto">
+                <table className="w-full border-collapse min-w-[480px]">
+                  <thead>
+                    <tr>
+                      <th className="bg-preto px-3 py-2 text-left text-[11px] text-amareloMil border-b-2 border-amareloMil font-mono tracking-wide">
+                        MILITAR
+                      </th>
+                      {rep.meses.map((m) => (
+                        <th
+                          key={m}
+                          className="bg-preto px-2 py-2 text-center text-[11px] text-caquiClaro border-b-2 border-amareloMil border-l border-linha font-mono"
+                        >
+                          {NOME_MES[m]}
+                        </th>
+                      ))}
+                      <th className="bg-preto px-2 py-2 text-center text-[11px] text-amareloMil border-b-2 border-amareloMil border-l border-linha font-mono">
+                        TOTAL
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.pessoas.map((p, i) => (
+                      <tr
+                        key={p.num + p.nome}
+                        className={i % 2 === 0 ? "bg-oliva" : "bg-olivaEsc"}
+                      >
+                        <td className="px-3 py-1.5 text-[11px] font-mono whitespace-nowrap">
+                          <span className="text-amareloMil font-bold mr-2">
+                            {p.num}
+                          </span>
+                          <span className="text-caquiClaro">{p.nome}</span>
+                          {p.isMonitor && (
+                            <span className="text-[9px] text-areia ml-1.5">
+                              (mon)
+                            </span>
+                          )}
+                        </td>
+                        {rep.meses.map((m) => (
+                          <td
+                            key={m}
+                            className="px-2 py-1.5 text-center text-[11px] text-caqui font-mono border-l border-linha"
+                          >
+                            {p.meses[m] ?? "—"}
+                          </td>
+                        ))}
+                        <td className="px-2 py-1.5 text-center text-[12px] text-amareloMil font-bold font-mono border-l border-linha">
+                          {p.total}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))
+      )}
     </div>
   );
 }

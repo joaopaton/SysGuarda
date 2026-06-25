@@ -48,6 +48,28 @@ export interface EscalaDTO {
   guardasCount?: number;
   turmaId?: string | null;
   turma?: { id: string; codigo: string; apelido: string } | null;
+  status?: "ABERTA" | "FECHADA";
+}
+
+export interface HoursPessoa {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  meses: Record<string, number>;
+  total: number;
+}
+
+export interface HoursTurma {
+  id: string;
+  codigo: string;
+  apelido: string;
+  pessoas: HoursPessoa[];
+}
+
+export interface HoursReport {
+  meses: number[];
+  turmas: HoursTurma[];
+  semTurma: HoursPessoa[];
 }
 
 export interface Instrutor {

@@ -16,6 +16,14 @@ export const VAGAS: Record<Funcao, number> = {
   "Guardas do TG": 5,
 };
 
+/** Horas de serviço por função: permanência = 6h, guarda noturna/Cmt = 12h. */
+export const HORAS: Record<Funcao, number> = {
+  "Cmt Gd TG": 12,
+  "Permanência Manhã": 6,
+  "Permanência Tarde": 6,
+  "Guardas do TG": 12,
+};
+
 export const DIAS_SEMANA = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
 
 export const NUM_DIAS = 7;
