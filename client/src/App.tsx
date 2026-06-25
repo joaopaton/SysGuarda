@@ -1518,6 +1518,7 @@ function UsuariosTab({
   const [role, setRole] = useState<import("./types").Papel>("instrutor");
   const [turmaId, setTurmaId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -1541,6 +1542,7 @@ function UsuariosTab({
       setSenha("");
       setTurmaId("");
       setRole("instrutor" as import("./types").Papel);
+      setMostrarForm(false);
       carregar();
     } catch (e) {
       onErro((e as Error).message);
@@ -1604,126 +1606,150 @@ function UsuariosTab({
       ? "border border-verdeBrilho text-verdeBrilho"
       : "border border-areia text-areia";
 
+  const linha = (u: import("./types").Usuario) => (
+    <div
+      key={u.id}
+      className="flex items-center gap-2 sm:gap-3 bg-olivaEsc border border-linha px-3 py-2.5 font-mono flex-wrap"
+    >
+      <CircleUserRound size={20} className="text-amareloMil shrink-0" />
+      <div className="min-w-[110px] flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[14px] text-caquiClaro truncate">
+            {u.username}
+          </span>
+          <span
+            className={`text-[8px] px-1.5 py-0.5 tracking-wide shrink-0 ${papelCls(
+              u.role
+            )}`}
+          >
+            {papelLabel(u.role)}
+          </span>
+        </div>
+      </div>
+      <select
+        value={u.role}
+        onChange={(e) =>
+          trocarPapel(u.id, e.target.value as import("./types").Papel)
+        }
+        title="Papel"
+        className="bg-preto border border-linha text-caqui px-2 py-1.5 text-[11px] font-mono"
+      >
+        <option value="instrutor">Instrutor</option>
+        <option value="monitor">Monitor</option>
+        <option value="superadmin">Comandante</option>
+      </select>
+      <select
+        value={idDaTurma(u.turma?.codigo)}
+        onChange={(e) => trocarTurma(u.id, e.target.value)}
+        title="Turma"
+        className="bg-preto border border-linha text-caqui px-2 py-1.5 text-[11px] font-mono"
+      >
+        <option value="">— turma —</option>
+        {turmas.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.codigo} {t.apelido}
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={() => redefinir(u.id, u.username)}
+        title="Redefinir senha"
+        className="text-areia hover:text-amareloMil p-1.5 border border-linha"
+      >
+        <RotateCw size={14} />
+      </button>
+      <button
+        onClick={() => remover(u.id, u.username)}
+        title="Remover"
+        className="text-vermelho hover:bg-vermelho/20 p-1.5 border border-vermelho/40"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+
+  const comando = usuarios.filter((u) => u.role === "superadmin");
+  const semTurma = usuarios.filter((u) => u.role !== "superadmin" && !u.turma);
+  const secoes: { titulo: string; cor: string; users: import("./types").Usuario[] }[] = [
+    { titulo: "◆ COMANDO", cor: "text-amareloMil", users: comando },
+    ...turmas.map((t) => ({
+      titulo: `${t.codigo} · ${t.apelido}`,
+      cor: "text-caquiClaro",
+      users: usuarios.filter(
+        (u) => u.role !== "superadmin" && u.turma?.codigo === t.codigo
+      ),
+    })),
+    { titulo: "SEM TURMA", cor: "text-areia", users: semTurma },
+  ];
+
   return (
-    <div className="max-w-[680px]">
-      <div className="bg-olivaEsc border border-amareloMil p-5 mb-5">
-        <h2 className="m-0 mb-1 text-[15px] text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
-          <UserCog size={16} /> NOVO USUÁRIO DE ACESSO
-        </h2>
-        <p className="m-0 mb-4 text-[11px] text-areia font-mono">
-          &gt; COMANDANTE VÊ TUDO · INSTRUTOR/MONITOR SÓ A SUA TURMA. SENHAS
-          GUARDADAS CRIPTOGRAFADAS.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={labelCls}>USUÁRIO</label>
-            <input
-              placeholder="ex.: schutz"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>SENHA (MÍN. 4)</label>
-            <input
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && adicionar()}
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>PAPEL</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as import("./types").Papel)}
-              className={inputCls}
-            >
-              <option value="instrutor">Instrutor</option>
-              <option value="monitor">Monitor</option>
-              <option value="superadmin">Comandante</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>
-              TURMA {role === "superadmin" && "(opcional)"}
-            </label>
-            <select
-              value={turmaId}
-              onChange={(e) => setTurmaId(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">— sem turma —</option>
-              {turmas.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.codigo} {t.apelido}
-                </option>
-              ))}
-            </select>
-          </div>
+    <div className="max-w-[760px]">
+      <div className="flex items-end justify-between flex-wrap gap-2 mb-4">
+        <div>
+          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+            <UserCog size={16} /> USUÁRIOS DE ACESSO
+          </h2>
+          <p className="mt-1 text-areia text-[11px] font-mono">
+            &gt; {usuarios.length} ATIVO(S) · COMANDANTE VÊ TUDO · SGT SÓ A SUA
+            TURMA
+          </p>
         </div>
         <button
-          onClick={adicionar}
-          className="mt-4 w-full bg-verdeMil text-caquiClaro py-2.5 font-bold text-[13px] tracking-wide font-mono inline-flex items-center justify-center gap-1.5"
+          onClick={() => {
+            setMsg(null);
+            setMostrarForm((v) => !v);
+          }}
+          className="bg-amareloMil text-preto px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5"
         >
-          <Plus size={15} /> CRIAR USUÁRIO
+          {mostrarForm ? <X size={15} /> : <Plus size={15} />}
+          {mostrarForm ? "FECHAR" : "NOVO USUÁRIO"}
         </button>
-        {msg && (
-          <p className="mt-3 text-[11px] text-amareloMil font-mono flex items-center gap-1.5">
-            <Check size={12} /> {msg}
-          </p>
-        )}
       </div>
 
-      <h3 className="text-[12px] text-areia font-mono tracking-[2px] mb-2">
-        &gt; {usuarios.length} USUÁRIO(S) ATIVO(S)
-      </h3>
-      <div className="flex flex-col gap-2">
-        {usuarios.map((u) => (
-          <div
-            key={u.id}
-            className="bg-olivaEsc border border-linha px-3 py-3 font-mono"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <CircleUserRound size={16} className="text-amareloMil shrink-0" />
-              <span className="text-[14px] text-caquiClaro truncate">
-                {u.username}
-              </span>
-              <span
-                className={`text-[9px] px-1.5 py-0.5 tracking-wide shrink-0 ${papelCls(
-                  u.role
-                )}`}
-              >
-                {papelLabel(u.role)}
-              </span>
-              {u.turma && (
-                <span className="text-[10px] text-amareloMil ml-auto">
-                  {u.turma.codigo} · {u.turma.apelido}
-                </span>
-              )}
+      {mostrarForm && (
+        <div className="bg-olivaEsc border border-amareloMil p-5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>USUÁRIO</label>
+              <input
+                placeholder="ex.: schutz"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className={inputCls}
+              />
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <label className="text-[9px] text-areia tracking-wide">PAPEL</label>
+            <div>
+              <label className={labelCls}>SENHA (MÍN. 4)</label>
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && adicionar()}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>PAPEL</label>
               <select
-                value={u.role}
+                value={role}
                 onChange={(e) =>
-                  trocarPapel(u.id, e.target.value as import("./types").Papel)
+                  setRole(e.target.value as import("./types").Papel)
                 }
-                className="bg-preto border border-linha text-caqui px-1.5 py-1 text-[10px] font-mono"
+                className={inputCls}
               >
                 <option value="instrutor">Instrutor</option>
                 <option value="monitor">Monitor</option>
                 <option value="superadmin">Comandante</option>
               </select>
-              <label className="text-[9px] text-areia tracking-wide ml-1">
-                TURMA
+            </div>
+            <div>
+              <label className={labelCls}>
+                TURMA {role === "superadmin" && "(opcional)"}
               </label>
               <select
-                value={idDaTurma(u.turma?.codigo)}
-                onChange={(e) => trocarTurma(u.id, e.target.value)}
-                className="bg-preto border border-linha text-caqui px-1.5 py-1 text-[10px] font-mono"
+                value={turmaId}
+                onChange={(e) => setTurmaId(e.target.value)}
+                className={inputCls}
               >
                 <option value="">— sem turma —</option>
                 {turmas.map((t) => (
@@ -1732,20 +1758,39 @@ function UsuariosTab({
                   </option>
                 ))}
               </select>
-              <button
-                onClick={() => redefinir(u.id, u.username)}
-                className="ml-auto text-[10px] text-areia border border-linha px-2 py-1 hover:text-amareloMil inline-flex items-center gap-1"
-              >
-                <RotateCw size={11} /> SENHA
-              </button>
-              <button
-                onClick={() => remover(u.id, u.username)}
-                className="text-vermelho leading-none p-1"
-                title="Remover"
-              >
-                <Trash2 size={15} />
-              </button>
             </div>
+          </div>
+          <button
+            onClick={adicionar}
+            className="mt-4 w-full bg-verdeMil text-caquiClaro py-2.5 font-bold text-[13px] tracking-wide font-mono inline-flex items-center justify-center gap-1.5"
+          >
+            <Plus size={15} /> CRIAR USUÁRIO
+          </button>
+        </div>
+      )}
+
+      {msg && (
+        <p className="mb-4 text-[11px] text-amareloMil font-mono flex items-center gap-1.5">
+          <Check size={12} /> {msg}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-5">
+        {secoes.map((s) => (
+          <div key={s.titulo}>
+            <h3
+              className={`text-[12px] font-mono tracking-[2px] mb-2 ${s.cor}`}
+            >
+              {s.titulo}{" "}
+              <span className="text-areia">({s.users.length})</span>
+            </h3>
+            {s.users.length === 0 ? (
+              <p className="text-[10px] text-areia/60 font-mono">
+                &gt; nenhum usuário
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">{s.users.map(linha)}</div>
+            )}
           </div>
         ))}
       </div>
