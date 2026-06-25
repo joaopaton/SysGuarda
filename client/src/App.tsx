@@ -12,7 +12,12 @@ import {
 } from "./types";
 import { SeletorPessoa } from "./components/SeletorPessoa";
 import { AditamentoModal } from "./components/AditamentoModal";
-import { exportarEscalaCSV, exportarHistoricoCSV, exportarPDF } from "./export";
+import {
+  exportarEscalaCSV,
+  exportarHistoricoCSV,
+  exportarPDF,
+  exportarHorasPDF,
+} from "./export";
 import { parseEscalaCsv } from "./parseEscalaCsv";
 import {
   Star,
@@ -2155,6 +2160,12 @@ function HorasTab({
         <div className="flex gap-2 flex-wrap">
           <BtnAcao onClick={exportarCsv} variant="areia">
             <FileSpreadsheet size={14} /> CSV
+          </BtnAcao>
+          <BtnAcao
+            onClick={() => rep && exportarHorasPDF(rep.meses, grupos)}
+            variant="vermelho"
+          >
+            <Printer size={14} /> PDF
           </BtnAcao>
           <label className="bg-verdeMil text-caquiClaro px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5 cursor-pointer">
             <Upload size={14} /> IMPORTAR FICHA{isSuper ? "" : " (MINHA TURMA)"}

@@ -94,6 +94,85 @@ export function exportarPDF(dias: string[], escala: DiaEscala[]) {
   };
 }
 
+interface HorasPessoaExport {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  meses: Record<string, number>;
+  total: number;
+}
+
+const NOME_MES_PDF = [
+  "", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN",
+  "JUL", "AGO", "SET", "OUT", "NOV", "DEZ",
+];
+
+/** Exporta o relatório de horas em PDF (retrato), uma tabela por turma. */
+export function exportarHorasPDF(
+  meses: number[],
+  grupos: { titulo: string; pessoas: HorasPessoaExport[] }[]
+) {
+  const cols = meses.map((m) => `<th>${NOME_MES_PDF[m]}</th>`).join("");
+  const tabelas = grupos
+    .filter((g) => g.pessoas.length > 0)
+    .map((g) => {
+      const linhas = g.pessoas
+        .map((p) => {
+          const cels = meses
+            .map((m) => `<td class="n">${p.meses[m] ?? "-"}</td>`)
+            .join("");
+          return `<tr><td class="nome"><b>${p.num}</b> ${p.nome}${
+            p.isMonitor ? ' <span class="mon">(mon)</span>' : ""
+          }</td>${cels}<td class="tot">${p.total}</td></tr>`;
+        })
+        .join("");
+      return `<h2>${g.titulo}</h2>
+      <table><thead><tr><th class="hnome">MILITAR</th>${cols}<th>TOTAL</th></tr></thead>
+      <tbody>${linhas}</tbody></table>`;
+    })
+    .join("");
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Horas de Serviço</title>
+  <style>
+    @page { size: A4 portrait; margin: 14mm; }
+    * { font-family: Arial, sans-serif; box-sizing: border-box; }
+    body { color: #1a1d12; }
+    h1 { font-size: 18px; margin: 0; letter-spacing: 1px; }
+    .sub { font-size: 11px; color: #555; margin: 2px 0 14px; }
+    h2 { font-size: 12px; margin: 16px 0 4px; color: #3a4220; letter-spacing: 1px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    th, td { border: 1px solid #333; padding: 3px 6px; font-size: 10px; }
+    th { background: #3a4220; color: #fff; text-align: center; }
+    th.hnome { text-align: left; }
+    td.nome { white-space: nowrap; }
+    td.n { text-align: center; }
+    td.tot { text-align: center; font-weight: bold; background: #eee; }
+    .mon { color: #777; }
+    .foot { margin-top: 16px; font-size: 9px; color: #777; text-align: center; letter-spacing: 1px; }
+  </style></head><body>
+  <div style="display:flex;align-items:center;gap:10px;border-bottom:3px solid #3a4220;padding-bottom:8px;margin-bottom:6px;">
+    <span style="font-size:22px">★</span><div><h1>HORAS DE SERVIÇO · T2</h1></div>
+  </div>
+  <div class="sub">PERMANÊNCIA 6H &nbsp;·&nbsp; NOITE/CMT 12H</div>
+  ${tabelas}
+  <div class="foot">▬▬▬ Emitido em ${new Date().toLocaleDateString(
+    "pt-BR"
+  )} ▬▬▬</div></body></html>`;
+
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Permita pop-ups para gerar o PDF.");
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => {
+    win.focus();
+    win.print();
+  };
+}
+
 /** Exporta o histórico (contagem da escala atual) em CSV. */
 export function exportarHistoricoCSV(
   registros: { num: string; nome: string; guardas: number }[]
