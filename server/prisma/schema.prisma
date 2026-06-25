@@ -19,9 +19,11 @@ model Turma {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  people    Person[]
-  users     User[]
-  schedules Schedule[]
+  people      Person[]
+  users       User[]
+  schedules   Schedule[]
+  attendances Attendance[]
+  missions    Mission[]
 }
 
 /// Efetivo: monitores (isMonitor=true) e guardas gerais.
@@ -40,6 +42,8 @@ model Person {
   turma   Turma?  @relation(fields: [turmaId], references: [id], onDelete: SetNull)
 
   assignments Assignment[]
+  attendances Attendance[]
+  missions    Mission[]
 
   @@unique([num, nome])
   @@index([isMonitor])
@@ -145,4 +149,51 @@ model Assignment {
 
   @@unique([scheduleId, dayIndex, funcao, slot])
   @@index([scheduleId])
+}
+
+/// Presença na instrução da manhã (independente da guarda). 1 registro por pessoa/dia.
+/// status: "PRESENTE" | "FALTA" | "JUSTIFICADO". Identidade por (num, nome).
+model Attendance {
+  id         String   @id @default(cuid())
+  date       DateTime // dia da instrução, normalizado 00:00
+  status     String   @default("PRESENTE")
+  createdAt  DateTime @default(now())
+
+  turmaId String?
+  turma   Turma?  @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+
+  personId   String?
+  person     Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personNum  String
+  personNome String
+
+  @@unique([date, personNum, personNome])
+  @@index([turmaId, date])
+}
+
+/// Horas complementares (missões). Horas variáveis (Float). Lançadas manual/CSV.
+/// O relatório soma por pessoa e compara com a meta (MissaoConfig).
+model Mission {
+  id        String    @id @default(cuid())
+  date      DateTime?
+  descricao String
+  horas     Float     @default(0)
+  createdAt DateTime  @default(now())
+
+  turmaId String?
+  turma   Turma?  @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+
+  personId   String?
+  person     Person? @relation(fields: [personId], references: [id], onDelete: SetNull)
+  personNum  String
+  personNome String
+
+  @@index([turmaId])
+}
+
+/// Config (linha única) da meta de horas complementares (ajustável pelo Comandante).
+model MissaoConfig {
+  id        String   @id @default("singleton")
+  metaHoras Int      @default(60)
+  updatedAt DateTime @updatedAt
 }

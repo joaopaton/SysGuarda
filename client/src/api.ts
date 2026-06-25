@@ -158,6 +158,49 @@ export const api = {
       body: JSON.stringify({ csv }),
     }),
 
+  // Presença (instrução da manhã)
+  getAttendance: (turmaId: string | null, date: string) => {
+    const qs = new URLSearchParams({ date });
+    if (turmaId) qs.set("turmaId", turmaId);
+    return req<import("./types").AttendanceDTO>(`/api/attendance?${qs}`);
+  },
+  saveAttendance: (
+    date: string,
+    turmaId: string | null,
+    registros: { num: string; nome: string; status: string }[]
+  ) =>
+    req<{ salvos: number }>("/api/attendance", {
+      method: "POST",
+      body: JSON.stringify({ date, turmaId, registros }),
+    }),
+
+  // Horas complementares (missões)
+  getMissions: (turmaId?: string | null) =>
+    req<import("./types").MissoesReport>(
+      `/api/missions${turmaId ? `?turmaId=${encodeURIComponent(turmaId)}` : ""}`
+    ),
+  addMission: (m: {
+    num: string;
+    nome: string;
+    date: string | null;
+    descricao: string;
+    horas: number;
+    turmaId: string | null;
+  }) => req<{ id: string }>("/api/missions", { method: "POST", body: JSON.stringify(m) }),
+  importMissions: (csv: string) =>
+    req<{ importadas: number; ignorados?: number }>("/api/missions/importar", {
+      method: "POST",
+      body: JSON.stringify({ csv }),
+    }),
+  removeMission: (id: string) =>
+    req<void>(`/api/missions/${id}`, { method: "DELETE" }),
+  getMissaoConfig: () => req<{ metaHoras: number }>("/api/missions/config"),
+  saveMissaoConfig: (metaHoras: number) =>
+    req<{ metaHoras: number }>("/api/missions/config", {
+      method: "PUT",
+      body: JSON.stringify({ metaHoras }),
+    }),
+
   history: (id: string) =>
     req<{ num: string; nome: string; guardas: number }[]>(
       `/api/schedule/${id}/history`

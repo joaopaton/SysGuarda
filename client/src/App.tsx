@@ -17,6 +17,10 @@ import {
   exportarHistoricoCSV,
   exportarPDF,
   exportarHorasPDF,
+  exportarPresencaPDF,
+  exportarPresencaCSV,
+  exportarMissoesPDF,
+  exportarMissoesCSV,
 } from "./export";
 import { parseEscalaCsv } from "./parseEscalaCsv";
 import {
@@ -50,6 +54,7 @@ import {
   Clock,
   Lock,
   Unlock,
+  ClipboardCheck,
 } from "lucide-react";
 
 type Aba =
@@ -59,7 +64,8 @@ type Aba =
   | "config"
   | "usuarios"
   | "salvas"
-  | "horas";
+  | "horas"
+  | "presenca";
 type Editando = { dia: number; func: (typeof FUNCOES)[number]; idx: number } | null;
 
 function proximaTercaISO(): string {
@@ -67,6 +73,20 @@ function proximaTercaISO(): string {
   const diff = (2 - d.getDay() + 7) % 7;
   d.setDate(d.getDate() + diff);
   return d.toISOString().split("T")[0];
+}
+
+/** Data de hoje em YYYY-MM-DD (fuso local). */
+function hojeISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
+/** "DD/MM/AAAA" a partir de "YYYY-MM-DD". */
+function dataBR(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return d ? `${d}/${m}/${y}` : iso;
 }
 
 export default function App({
@@ -453,6 +473,16 @@ export default function App({
           />
         )}
 
+        {aba === "presenca" && (
+          <PresencaTab
+            isSuper={isSuper}
+            turmaFoco={turmaFoco}
+            turmas={turmas}
+            user={user}
+            onErro={setErro}
+          />
+        )}
+
         {aba === "horas" && (
           <HorasTab
             isSuper={isSuper}
@@ -565,6 +595,7 @@ function Tabs({
       : []),
     ["escala", "ESCALA", CalendarDays],
     ["salvas", "SALVAS", Archive],
+    ["presenca", "PRESENÇA", ClipboardCheck],
     ["horas", "HORAS", Clock],
     ["guardas", "EFETIVO", Users],
     ["config", "COMANDO", Settings],
@@ -2123,6 +2154,7 @@ function HorasTab({
 }) {
   const [rep, setRep] = useState<import("./types").HoursReport | null>(null);
   const [impMsg, setImpMsg] = useState<string | null>(null);
+  const [sub, setSub] = useState<"servico" | "missoes">("servico");
 
   const carregar = useCallback(async () => {
     try {
@@ -2192,6 +2224,32 @@ function HorasTab({
 
   return (
     <div>
+      <div className="flex gap-1 mb-5 border border-linha bg-preto p-1 w-fit">
+        {(["servico", "missoes"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setSub(s)}
+            className={`px-4 py-1.5 text-[11px] font-bold tracking-[1px] font-mono inline-flex items-center gap-1.5 ${
+              sub === s ? "bg-amareloMil text-preto" : "text-areia"
+            }`}
+          >
+            {s === "servico" ? (
+              <>
+                <Clock size={13} /> SERVIÇO
+              </>
+            ) : (
+              <>
+                <Flag size={13} /> MISSÕES
+              </>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {sub === "missoes" ? (
+        <MissoesSecao isSuper={isSuper} turmaFoco={turmaFoco} onErro={onErro} />
+      ) : (
+      <>
       <div className="flex items-end justify-between flex-wrap gap-2 mb-4">
         <div>
           <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
@@ -2303,6 +2361,496 @@ function HorasTab({
               </div>
             </div>
           ))
+      )}
+      </>
+      )}
+    </div>
+  );
+}
+
+function MissoesSecao({
+  isSuper,
+  turmaFoco,
+  onErro,
+}: {
+  isSuper: boolean;
+  turmaFoco: string;
+  onErro: (e: string | null) => void;
+}) {
+  const [rep, setRep] = useState<import("./types").MissoesReport | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [num, setNum] = useState("");
+  const [nome, setNome] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [horas, setHoras] = useState("");
+  const [data, setData] = useState("");
+  const [metaEdit, setMetaEdit] = useState("");
+
+  const carregar = useCallback(async () => {
+    try {
+      setRep(await api.getMissions(isSuper ? turmaFoco || null : null));
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  }, [isSuper, turmaFoco, onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const lancar = async () => {
+    setMsg(null);
+    if (!nome.trim() || !horas) return;
+    try {
+      await api.addMission({
+        num: num.trim() || "---",
+        nome: nome.trim().toUpperCase(),
+        date: data || null,
+        descricao: descricao.trim(),
+        horas: Number(horas.replace(",", ".")),
+        turmaId: isSuper ? turmaFoco || null : null,
+      });
+      setNum("");
+      setNome("");
+      setDescricao("");
+      setHoras("");
+      setData("");
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const importar = async (file: File) => {
+    setMsg(null);
+    try {
+      const r = await api.importMissions(await file.text());
+      const ign = r.ignorados ? ` · ${r.ignorados} fora da turma ignorado(s)` : "";
+      setMsg(`${r.importadas} missão(ões) importada(s)${ign}.`);
+      carregar();
+    } catch (e) {
+      setMsg(`Erro: ${(e as Error).message}`);
+    }
+  };
+
+  const remover = async (id: string) => {
+    try {
+      await api.removeMission(id);
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const salvarMeta = async () => {
+    const m = parseInt(metaEdit, 10);
+    if (!Number.isFinite(m) || m < 0) return;
+    try {
+      await api.saveMissaoConfig(m);
+      setMetaEdit("");
+      carregar();
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  };
+
+  const grupos = rep
+    ? [
+        ...rep.turmas.map((t) => ({
+          titulo: `${t.codigo} · ${t.apelido}`,
+          pessoas: t.pessoas,
+        })),
+        ...(rep.semTurma.length
+          ? [{ titulo: "SEM TURMA", pessoas: rep.semTurma }]
+          : []),
+      ]
+    : [];
+  const temDados = grupos.some((g) => g.pessoas.length > 0);
+
+  return (
+    <div>
+      <div className="flex items-end justify-between flex-wrap gap-2 mb-4">
+        <div>
+          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+            <Flag size={16} /> HORAS COMPLEMENTARES (MISSÕES)
+          </h2>
+          <p className="mt-1 text-areia text-[11px] font-mono">
+            &gt; META MÍNIMA:{" "}
+            <span className="text-amareloMil font-bold">{rep?.meta ?? "—"}H</span>{" "}
+            POR MILITAR · QUEM ESTÁ ABAIXO APARECE EM VERMELHO. SEM TETO.
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap items-center">
+          {isSuper && (
+            <div className="flex items-center gap-1 border border-linha bg-preto px-2 py-1">
+              <span className="text-[10px] text-areia font-mono">META</span>
+              <input
+                type="number"
+                min={0}
+                placeholder={String(rep?.meta ?? 60)}
+                value={metaEdit}
+                onChange={(e) => setMetaEdit(e.target.value)}
+                className="w-16 bg-transparent border border-linha text-caquiClaro px-1.5 py-0.5 text-[11px] font-mono"
+              />
+              <button
+                onClick={salvarMeta}
+                className="text-amareloMil text-[11px] font-mono px-1.5 hover:text-caquiClaro"
+              >
+                <Check size={13} />
+              </button>
+            </div>
+          )}
+          <BtnAcao
+            onClick={() => rep && exportarMissoesCSV(rep.meta, grupos)}
+            variant="areia"
+          >
+            <FileSpreadsheet size={14} /> CSV
+          </BtnAcao>
+          <BtnAcao
+            onClick={() => rep && exportarMissoesPDF(rep.meta, grupos)}
+            variant="vermelho"
+          >
+            <Printer size={14} /> PDF
+          </BtnAcao>
+          <label className="bg-verdeMil text-caquiClaro px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5 cursor-pointer">
+            <Upload size={14} /> IMPORTAR CSV{isSuper ? "" : " (MINHA TURMA)"}
+            <input
+              type="file"
+              accept=".csv,.txt,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importar(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="bg-olivaEsc border border-dashed border-amareloMil p-3 mb-5">
+        <p className="text-[10px] text-areia font-mono mb-2">
+          &gt; LANÇAR MISSÃO · CSV ESPERADO:{" "}
+          <span className="text-amareloMil">num ; nome ; data ; descrição ; horas</span>
+        </p>
+        <div className="flex gap-2 flex-wrap items-center">
+          <input
+            placeholder="Nº"
+            value={num}
+            onChange={(e) => setNum(e.target.value)}
+            className="w-[70px] bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          />
+          <input
+            placeholder="NOME"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            className="flex-1 min-w-[130px] bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          />
+          <input
+            placeholder="DESCRIÇÃO"
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            className="flex-1 min-w-[130px] bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          />
+          <input
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+            className="bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          />
+          <input
+            placeholder="HORAS"
+            value={horas}
+            onChange={(e) => setHoras(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && lancar()}
+            className="w-[80px] bg-preto border border-linha text-caquiClaro px-2 py-2 text-sm font-mono"
+          />
+          <button
+            onClick={lancar}
+            className="bg-amareloMil text-preto px-4 py-2 font-bold text-[13px] tracking-wide font-mono inline-flex items-center gap-1.5"
+          >
+            <Plus size={15} /> LANÇAR
+          </button>
+        </div>
+      </div>
+
+      {msg && (
+        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono">
+          {msg}
+        </div>
+      )}
+
+      {!rep ? (
+        <p className="text-areia text-[12px] font-mono">CARREGANDO…</p>
+      ) : !temDados ? (
+        <p className="text-areia text-[12px] font-mono">
+          &gt; NENHUMA MISSÃO LANÇADA AINDA.
+        </p>
+      ) : (
+        grupos
+          .filter((g) => g.pessoas.length > 0)
+          .map((g) => (
+            <div key={g.titulo} className="mb-6">
+              <h3 className="text-[13px] text-amareloMil font-mono tracking-[2px] mb-2">
+                {g.titulo}
+              </h3>
+              <div className="border border-linha overflow-x-auto">
+                <table className="w-full border-collapse min-w-[480px]">
+                  <thead>
+                    <tr>
+                      <th className="bg-preto px-3 py-2 text-left text-[11px] text-amareloMil border-b-2 border-amareloMil font-mono tracking-wide">
+                        MILITAR
+                      </th>
+                      <th className="bg-preto px-3 py-2 text-left text-[11px] text-caquiClaro border-b-2 border-amareloMil border-l border-linha font-mono">
+                        LANÇAMENTOS
+                      </th>
+                      <th className="bg-preto px-2 py-2 text-center text-[11px] text-amareloMil border-b-2 border-amareloMil border-l border-linha font-mono">
+                        TOTAL
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.pessoas.map((p, i) => (
+                      <tr
+                        key={p.num + p.nome}
+                        className={i % 2 === 0 ? "bg-oliva" : "bg-olivaEsc"}
+                      >
+                        <td className="px-3 py-1.5 text-[11px] font-mono whitespace-nowrap align-top">
+                          <span className="text-amareloMil font-bold mr-2">
+                            {p.num}
+                          </span>
+                          <span className="text-caquiClaro">{p.nome}</span>
+                          {p.isMonitor && (
+                            <span className="text-[9px] text-areia ml-1.5">(mon)</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5 text-[10px] font-mono border-l border-linha">
+                          <div className="flex flex-col gap-0.5">
+                            {p.lancamentos.map((l) => (
+                              <span
+                                key={l.id}
+                                className="flex items-center gap-1.5 text-caqui"
+                              >
+                                <span className="text-amareloMil">{l.horas}h</span>
+                                {l.date && (
+                                  <span className="text-areia">
+                                    {dataBR(l.date)}
+                                  </span>
+                                )}
+                                <span className="truncate max-w-[200px]">
+                                  {l.descricao || "—"}
+                                </span>
+                                <button
+                                  onClick={() => remover(l.id)}
+                                  title="Remover lançamento"
+                                  className="text-vermelho ml-0.5"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td
+                          className={`px-2 py-1.5 text-center text-[12px] font-bold font-mono border-l border-linha ${
+                            p.abaixo ? "text-vermelho" : "text-verdeBrilho"
+                          }`}
+                        >
+                          {p.total}h
+                          {p.abaixo && (
+                            <div className="text-[9px] font-normal">ABAIXO</div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))
+      )}
+    </div>
+  );
+}
+
+function PresencaTab({
+  isSuper,
+  turmaFoco,
+  turmas,
+  user,
+  onErro,
+}: {
+  isSuper: boolean;
+  turmaFoco: string;
+  turmas: Turma[];
+  user: MeUser | null;
+  onErro: (e: string | null) => void;
+}) {
+  const [date, setDate] = useState(hojeISO());
+  const [linhas, setLinhas] = useState<import("./types").AttendanceRow[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  // Turma resolvida: super usa o filtro global; instrutor/monitor a sua.
+  const turmaId = isSuper ? turmaFoco || null : user?.turma?.id ?? null;
+  const turmaSemFoco = isSuper && !turmaFoco;
+  const turmaObj = turmas.find((t) => t.id === turmaId);
+  const turmaLabel = turmaObj
+    ? `${turmaObj.codigo} · ${turmaObj.apelido}`
+    : user?.turma
+    ? `${user.turma.codigo} · ${user.turma.apelido}`
+    : "—";
+
+  const carregar = useCallback(async () => {
+    if (turmaSemFoco) {
+      setLinhas([]);
+      return;
+    }
+    try {
+      const r = await api.getAttendance(turmaId, date);
+      setLinhas(r.linhas);
+    } catch (e) {
+      onErro((e as Error).message);
+    }
+  }, [turmaId, date, turmaSemFoco, onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const setStatus = (
+    i: number,
+    status: import("./types").AttendanceStatus
+  ) =>
+    setLinhas((prev) =>
+      prev.map((l, idx) => (idx === i ? { ...l, status } : l))
+    );
+
+  const salvar = async () => {
+    setSalvando(true);
+    setMsg(null);
+    try {
+      const r = await api.saveAttendance(date, turmaId, linhas);
+      setMsg(`Presença salva (${r.salvos} registro(s)).`);
+    } catch (e) {
+      onErro((e as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const presentes = linhas.filter((l) => l.status === "PRESENTE").length;
+  const faltas = linhas.filter((l) => l.status === "FALTA").length;
+  const justificados = linhas.filter((l) => l.status === "JUSTIFICADO").length;
+
+  const STATUS: {
+    valor: import("./types").AttendanceStatus;
+    label: string;
+    on: string;
+  }[] = [
+    { valor: "PRESENTE", label: "P", on: "bg-verdeMil text-caquiClaro" },
+    { valor: "FALTA", label: "F", on: "bg-vermelho text-caquiClaro" },
+    { valor: "JUSTIFICADO", label: "J", on: "bg-amareloMil text-preto" },
+  ];
+
+  return (
+    <div>
+      <div className="flex items-end justify-between flex-wrap gap-2 mb-4">
+        <div>
+          <h2 className="m-0 text-base text-amareloMil font-estencil tracking-[2px] flex items-center gap-2">
+            <ClipboardCheck size={16} /> LISTA DE PRESENÇA · INSTRUÇÃO
+          </h2>
+          <p className="mt-1 text-areia text-[11px] font-mono">
+            &gt; CHAMADA DA INSTRUÇÃO DA MANHÃ · {turmaLabel}
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap items-center">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="bg-preto border border-linha text-caquiClaro px-3 py-2 text-sm font-mono"
+          />
+          <BtnAcao
+            onClick={() => exportarPresencaCSV(dataBR(date), turmaLabel, linhas)}
+            variant="areia"
+          >
+            <FileSpreadsheet size={14} /> CSV
+          </BtnAcao>
+          <BtnAcao
+            onClick={() => exportarPresencaPDF(dataBR(date), turmaLabel, linhas)}
+            variant="vermelho"
+          >
+            <Printer size={14} /> PDF
+          </BtnAcao>
+          <BtnAcao onClick={salvar} variant="amarelo">
+            <Save size={14} /> {salvando ? "SALVANDO…" : "SALVAR"}
+          </BtnAcao>
+        </div>
+      </div>
+
+      {msg && (
+        <div className="bg-verdeMil/20 border border-verdeBrilho px-3.5 py-2 mb-4 text-[11px] text-caquiClaro font-mono flex items-center gap-2">
+          <Check size={13} className="shrink-0" /> {msg}
+        </div>
+      )}
+
+      {turmaSemFoco ? (
+        <p className="text-areia text-[12px] font-mono">
+          &gt; SELECIONE UMA TURMA NO FILTRO ACIMA PARA FAZER A CHAMADA.
+        </p>
+      ) : linhas.length === 0 ? (
+        <p className="text-areia text-[12px] font-mono">
+          &gt; SEM EFETIVO NESTA TURMA.
+        </p>
+      ) : (
+        <>
+          <p className="text-[11px] text-areia font-mono mb-3">
+            <span className="text-verdeBrilho">{presentes} PRESENTE(S)</span> ·{" "}
+            <span className="text-vermelho">{faltas} FALTA(S)</span> ·{" "}
+            <span className="text-amareloMil">{justificados} JUSTIFICADO(S)</span>
+          </p>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2">
+            {linhas.map((l, i) => (
+              <div
+                key={l.num + l.nome}
+                className={`border px-3 py-2.5 font-mono ${
+                  l.isMonitor
+                    ? "bg-oliva border-amareloMil/40"
+                    : "bg-olivaEsc border-linha"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] truncate">
+                    <span className="text-amareloMil font-bold mr-2">{l.num}</span>
+                    <span className="text-caquiClaro">{l.nome}</span>
+                    {l.isMonitor && (
+                      <span className="text-[9px] text-areia ml-1.5">(mon)</span>
+                    )}
+                  </span>
+                  <span className="flex gap-1 shrink-0">
+                    {STATUS.map((s) => (
+                      <button
+                        key={s.valor}
+                        onClick={() => setStatus(i, s.valor)}
+                        title={s.valor}
+                        className={`w-7 h-7 text-[12px] font-bold border border-linha ${
+                          l.status === s.valor ? s.on : "text-areia"
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-areia text-[10px] mt-4 font-mono">
+            &gt; P = PRESENTE · F = FALTA · J = JUSTIFICADO · NÃO MARCADO CONTA
+            COMO PRESENTE.
+          </p>
+        </>
       )}
     </div>
   );
