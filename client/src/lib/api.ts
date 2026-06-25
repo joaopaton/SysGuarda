@@ -173,6 +173,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ date, turmaId, registros }),
     }),
+  getHistoricoPresenca: (
+    turmaId: string | null,
+    from: string,
+    to: string
+  ) => {
+    const qs = new URLSearchParams();
+    if (turmaId) qs.set("turmaId", turmaId);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    return req<import("./types").PresencaHistorico>(
+      `/api/attendance/historico?${qs}`
+    );
+  },
 
   // Horas complementares (missões)
   getMissions: (turmaId?: string | null) =>

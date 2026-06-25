@@ -256,6 +256,87 @@ export function exportarPresencaCSV(
   baixar("lista_presenca.csv", "﻿" + out.join("\n"), "text/csv;charset=utf-8");
 }
 
+// ===== Histórico de presença (consolidado) =====
+
+interface HistPessoaExport {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  presentes: number;
+  faltas: number;
+  justificados: number;
+}
+
+/** Histórico de presença (totais por pessoa) em CSV. */
+export function exportarHistoricoPresencaCSV(
+  periodoLabel: string,
+  grupos: { titulo: string; pessoas: HistPessoaExport[] }[]
+) {
+  const sep = ";";
+  const out = [`HISTÓRICO DE PRESENÇA${sep}${periodoLabel}`, ""];
+  for (const g of grupos) {
+    if (g.pessoas.length === 0) continue;
+    out.push(g.titulo);
+    out.push(["Nº", "NOME", "PRESENÇAS", "FALTAS", "JUSTIFICADOS", "DIAS"].join(sep));
+    for (const p of g.pessoas)
+      out.push(
+        [
+          p.num,
+          p.nome,
+          p.presentes,
+          p.faltas,
+          p.justificados,
+          p.presentes + p.faltas + p.justificados,
+        ].join(sep)
+      );
+    out.push("");
+  }
+  baixar("historico_presenca.csv", "﻿" + out.join("\n"), "text/csv;charset=utf-8");
+}
+
+/** Histórico de presença (totais por pessoa) em PDF (retrato), por turma. */
+export function exportarHistoricoPresencaPDF(
+  periodoLabel: string,
+  grupos: { titulo: string; pessoas: HistPessoaExport[] }[]
+) {
+  const tabelas = grupos
+    .filter((g) => g.pessoas.length > 0)
+    .map((g) => {
+      const linhas = g.pessoas
+        .map(
+          (p) =>
+            `<tr><td class="nome"><b>${p.num}</b> ${p.nome}${
+              p.isMonitor ? ' <span class="mon">(mon)</span>' : ""
+            }</td><td class="c">${p.presentes}</td><td class="c">${p.faltas}</td><td class="c">${p.justificados}</td><td class="c tot">${
+              p.presentes + p.faltas + p.justificados
+            }</td></tr>`
+        )
+        .join("");
+      return `<h2>${g.titulo}</h2>
+      <table><thead><tr><th class="hnome">MILITAR</th><th>P</th><th>F</th><th>J</th><th>DIAS</th></tr></thead>
+      <tbody>${linhas}</tbody></table>`;
+    })
+    .join("");
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Histórico de Presença</title>
+  <style>
+    @page { size: A4 portrait; margin: 14mm; }
+    ${CABECALHO_PDF}
+    td.c { text-align: center; }
+    td.nome { white-space: nowrap; }
+    td.tot { font-weight: bold; background: #eee; }
+    .mon { color: #777; }
+  </style></head><body>
+  <div style="display:flex;align-items:center;gap:10px;border-bottom:3px solid #3a4220;padding-bottom:8px;margin-bottom:6px;">
+    <span style="font-size:22px">★</span><div><h1>HISTÓRICO DE PRESENÇA · TG 05-003</h1></div>
+  </div>
+  <div class="sub">PERÍODO: ${periodoLabel} &nbsp;·&nbsp; P=presente · F=falta · J=justificado</div>
+  ${tabelas}
+  <div class="foot">▬▬▬ Emitido em ${new Date().toLocaleDateString("pt-BR")} ▬▬▬</div>
+  </body></html>`;
+  imprimir(html);
+}
+
 // ===== Horas complementares (missões) =====
 
 interface MissoesPessoaExport {

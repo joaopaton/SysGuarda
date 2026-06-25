@@ -87,6 +87,27 @@ export interface AttendanceDTO {
   linhas: AttendanceRow[];
 }
 
+export interface PresencaLinha {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  presentes: number;
+  faltas: number;
+  justificados: number;
+  dias: Record<string, AttendanceStatus>;
+}
+
+export interface PresencaHistorico {
+  datas: string[];
+  turmas: {
+    id: string;
+    codigo: string;
+    apelido: string;
+    pessoas: PresencaLinha[];
+  }[];
+  semTurma: PresencaLinha[];
+}
+
 export interface MissaoLancamento {
   id: string;
   date: string | null;

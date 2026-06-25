@@ -9,6 +9,7 @@ import { useNav } from "../../state/NavContext";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { HistoricoPresenca } from "./HistoricoPresenca";
 
 const STATUS: { valor: AttendanceStatus; label: string; on: string }[] = [
   { valor: "PRESENTE", label: "P", on: "bg-verde text-noVerde border-verde" },
@@ -23,6 +24,7 @@ export function PresencaTab() {
   const [linhas, setLinhas] = useState<AttendanceRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [sub, setSub] = useState<"chamada" | "historico">("chamada");
 
   const turmaId = isSuper ? turmaFoco || null : user?.turma?.id ?? null;
   const turmaSemFoco = isSuper && !turmaFoco;
@@ -74,27 +76,54 @@ export function PresencaTab() {
     <div>
       <SectionHeader
         title="Presença"
-        subtitle={`Chamada da instrução · ${turmaLabel}`}
+        subtitle={
+          sub === "chamada"
+            ? `Chamada da instrução · ${turmaLabel}`
+            : "Histórico consolidado · visão geral e detalhe por militar"
+        }
         right={
-          <>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="bg-superficie border border-borda text-texto rounded-lg px-3 py-2 text-sm"
-            />
-            <Button variant="outline" size="sm" onClick={() => exportarPresencaCSV(dataBR(date), turmaLabel, linhas)}>
-              <FileSpreadsheet size={14} /> CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => exportarPresencaPDF(dataBR(date), turmaLabel, linhas)}>
-              <Printer size={14} /> PDF
-            </Button>
-            <Button variant="primary" size="sm" onClick={salvar}>
-              <Save size={14} /> {salvando ? "Salvando…" : "Salvar"}
-            </Button>
-          </>
+          <div className="flex bg-superficie border border-borda rounded-lg p-0.5">
+            <button
+              onClick={() => setSub("chamada")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                sub === "chamada" ? "bg-verde text-noVerde" : "text-textoSec"
+              }`}
+            >
+              Chamada
+            </button>
+            <button
+              onClick={() => setSub("historico")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                sub === "historico" ? "bg-verde text-noVerde" : "text-textoSec"
+              }`}
+            >
+              Histórico
+            </button>
+          </div>
         }
       />
+
+      {sub === "historico" ? (
+        <HistoricoPresenca />
+      ) : (
+        <>
+      <div className="flex gap-2 flex-wrap items-center mb-4">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="bg-superficie border border-borda text-texto rounded-lg px-3 py-2 text-sm"
+        />
+        <Button variant="outline" size="sm" onClick={() => exportarPresencaCSV(dataBR(date), turmaLabel, linhas)}>
+          <FileSpreadsheet size={14} /> CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => exportarPresencaPDF(dataBR(date), turmaLabel, linhas)}>
+          <Printer size={14} /> PDF
+        </Button>
+        <Button variant="primary" size="sm" onClick={salvar}>
+          <Save size={14} /> {salvando ? "Salvando…" : "Salvar"}
+        </Button>
+      </div>
 
       {msg && (
         <div className="mb-4 rounded-lg border border-verde bg-verdeTint text-verdeTexto px-4 py-2.5 text-sm">
@@ -150,6 +179,8 @@ export function PresencaTab() {
           <p className="text-textoTen text-xs mt-4">
             P = presente · F = falta · J = justificado · não marcado conta como presente.
           </p>
+        </>
+      )}
         </>
       )}
     </div>
