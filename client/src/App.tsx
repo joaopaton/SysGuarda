@@ -2067,7 +2067,8 @@ function HorasTab({
     setImpMsg(null);
     try {
       const r = await api.importarFicha(await file.text());
-      setImpMsg(`${r.importadas} registro(s) importado(s).`);
+      const ign = r.ignorados ? ` · ${r.ignorados} fora da turma ignorado(s)` : "";
+      setImpMsg(`${r.importadas} registro(s) importado(s)${ign}.`);
       carregar();
     } catch (e) {
       setImpMsg(`Erro: ${(e as Error).message}`);
@@ -2132,21 +2133,19 @@ function HorasTab({
           <BtnAcao onClick={exportarCsv} variant="areia">
             <FileSpreadsheet size={14} /> CSV
           </BtnAcao>
-          {isSuper && (
-            <label className="bg-verdeMil text-caquiClaro px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5 cursor-pointer">
-              <Upload size={14} /> IMPORTAR FICHA
-              <input
-                type="file"
-                accept=".csv,.txt,text/csv"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) importarFicha(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-          )}
+          <label className="bg-verdeMil text-caquiClaro px-4 py-2 font-bold text-xs tracking-wide font-mono inline-flex items-center gap-1.5 cursor-pointer">
+            <Upload size={14} /> IMPORTAR FICHA{isSuper ? "" : " (MINHA TURMA)"}
+            <input
+              type="file"
+              accept=".csv,.txt,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importarFicha(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
         </div>
       </div>
 

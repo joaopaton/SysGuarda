@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { HORAS, type Funcao } from "../domain.js";
-import { requireSuperadmin } from "../auth.js";
 import { isSuperadmin, str } from "../scope.js";
 
 export const hoursRouter = Router();
@@ -107,7 +106,13 @@ const semAcento = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 // POST /api/hours/importar-ficha  { csv }  -> substitui o saldo manual.
-hoursRouter.post("/importar-ficha", requireSuperadmin, async (req, res) => {
+// Comandante importa todas as turmas; instrutor/monitor só a própria turma
+// (só as pessoas da turma são consideradas e têm o saldo substituído).
+hoursRouter.post("/importar-ficha", async (req, res) => {
+  const sup = isSuperadmin(req);
+  if (!sup && !req.user?.turmaId) {
+    return res.status(403).json({ error: "Seu usuário não tem turma definida." });
+  }
   const csv = str(req.body?.csv, 200000).replace(/^﻿/, "");
   if (!csv) return res.status(400).json({ error: "CSV vazio." });
   const matriz = csv.split(/\r?\n/).map((l) => l.split(/[;,\t]/));
@@ -125,19 +130,28 @@ hoursRouter.post("/importar-ficha", requireSuperadmin, async (req, res) => {
     if (m) colMes[i] = m;
   });
 
-  const people = await prisma.person.findMany({ where: { active: true } });
-  const porNome = new Map<string, string>(); // nome -> num (se único)
+  // Escopo: super = todo o efetivo; instrutor/monitor = só a sua turma.
+  const escopo = await prisma.person.findMany({
+    where: { active: true, ...(sup ? {} : { turmaId: req.user!.turmaId }) },
+  });
+  const porNome = new Map<string, string>();
   const contagem = new Map<string, number>();
-  for (const p of people) {
+  for (const p of escopo) {
     contagem.set(p.nome, (contagem.get(p.nome) || 0) + 1);
     porNome.set(p.nome, p.num);
   }
 
   const registros: { num: string; nome: string; mes: number; horas: number }[] = [];
+  const foraDoEscopo: string[] = [];
   for (let i = headerIdx + 1; i < matriz.length; i++) {
     const row = matriz[i];
     const nome = (row[0] || "").trim().toUpperCase();
     if (!nome || /^(nome|monitores|horas de sv)$/i.test(nome)) continue;
+    // Fora do escopo (não é da turma): ignora.
+    if (!contagem.has(nome)) {
+      foraDoEscopo.push(nome);
+      continue;
+    }
     const num = (contagem.get(nome) === 1 && porNome.get(nome)) || "---";
     for (const [idxStr, mes] of Object.entries(colMes)) {
       const h = parseInt((row[Number(idxStr)] || "").trim(), 10);
@@ -145,14 +159,18 @@ hoursRouter.post("/importar-ficha", requireSuperadmin, async (req, res) => {
     }
   }
   if (registros.length === 0) {
-    return res.status(400).json({ error: "Nenhuma hora válida na FICHA." });
+    return res
+      .status(400)
+      .json({ error: "Nenhuma hora válida da sua turma na FICHA." });
   }
 
+  // Substitui só o saldo das pessoas do escopo (não mexe nas outras turmas).
+  const chaves = escopo.map((p) => ({ num: p.num, nome: p.nome }));
   await prisma.$transaction([
-    prisma.manualHours.deleteMany(),
-    ...registros.map((r) =>
-      prisma.manualHours.create({ data: r })
-    ),
+    sup
+      ? prisma.manualHours.deleteMany()
+      : prisma.manualHours.deleteMany({ where: { OR: chaves } }),
+    ...registros.map((r) => prisma.manualHours.create({ data: r })),
   ]);
-  res.json({ importadas: registros.length });
+  res.json({ importadas: registros.length, ignorados: foraDoEscopo.length });
 });

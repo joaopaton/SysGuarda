@@ -153,7 +153,7 @@ export const api = {
       `/api/hours${turmaId ? `?turmaId=${encodeURIComponent(turmaId)}` : ""}`
     ),
   importarFicha: (csv: string) =>
-    req<{ importadas: number }>("/api/hours/importar-ficha", {
+    req<{ importadas: number; ignorados?: number }>("/api/hours/importar-ficha", {
       method: "POST",
       body: JSON.stringify({ csv }),
     }),
