@@ -474,6 +474,7 @@ export default function App({
           dias={dto.dias}
           escala={dto.escala}
           onClose={() => setShowAditamento(false)}
+          isSuper={isSuper}
         />
       )}
 

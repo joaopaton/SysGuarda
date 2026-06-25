@@ -9,6 +9,7 @@ interface Props {
   dias: string[];
   escala: DiaEscala[];
   onClose: () => void;
+  isSuper: boolean;
 }
 
 const CFG_VAZIA: AditamentoConfig = {
@@ -22,7 +23,13 @@ const CFG_VAZIA: AditamentoConfig = {
   lema: "",
 };
 
-export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
+export function AditamentoModal({
+  startDate,
+  dias,
+  escala,
+  onClose,
+  isSuper,
+}: Props) {
   const [cfg, setCfg] = useState<AditamentoConfig>(CFG_VAZIA);
   const [instrutores, setInstrutores] = useState<Instrutor[]>([]);
   const [porDia, setPorDia] = useState<string[]>(Array(dias.length).fill(""));
@@ -60,7 +67,9 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
   const gerar = async () => {
     setErro(null);
     try {
-      await api.saveAditamentoConfig(cfg);
+      // Só o Comandante persiste os textos fixos (config é global/compartilhada).
+      // Instrutor/monitor geram o documento usando a config atual (sem salvar).
+      if (isSuper) await api.saveAditamentoConfig(cfg);
       const html = buildAditamentoHTML(startDate, escala, {
         ...cfg,
         dataEmissao,
@@ -181,40 +190,42 @@ export function AditamentoModal({ startDate, dias, escala, onClose }: Props) {
             ))}
           </div>
 
-          {/* Cadastro de SGTs */}
-          <div className="bg-preto border border-linha p-2.5">
-            <div className="flex gap-2 mb-2">
-              <input
-                placeholder="Cadastrar SGT (ex.: SGT SCHÜTZ)"
-                value={novoSgt}
-                onChange={(e) => setNovoSgt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addSgt()}
-                className={inputCls}
-              />
-              <button
-                onClick={addSgt}
-                className="bg-verdeMil text-caquiClaro px-3 py-1.5 text-[11px] font-bold font-mono whitespace-nowrap inline-flex items-center gap-1"
-              >
-                <Plus size={13} /> ADD
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {instrutores.map((ins) => (
-                <span
-                  key={ins.id}
-                  className="inline-flex items-center gap-1 bg-oliva border border-linha px-2 py-0.5 text-[10px] text-caquiClaro font-mono"
+          {/* Cadastro de SGTs — só o Comandante (add/remove são globais). */}
+          {isSuper && (
+            <div className="bg-preto border border-linha p-2.5">
+              <div className="flex gap-2 mb-2">
+                <input
+                  placeholder="Cadastrar SGT (ex.: SGT SCHÜTZ)"
+                  value={novoSgt}
+                  onChange={(e) => setNovoSgt(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addSgt()}
+                  className={inputCls}
+                />
+                <button
+                  onClick={addSgt}
+                  className="bg-verdeMil text-caquiClaro px-3 py-1.5 text-[11px] font-bold font-mono whitespace-nowrap inline-flex items-center gap-1"
                 >
-                  {ins.nome}
-                  <button
-                    onClick={() => removeSgt(ins.id)}
-                    className="text-vermelho inline-flex items-center"
+                  <Plus size={13} /> ADD
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {instrutores.map((ins) => (
+                  <span
+                    key={ins.id}
+                    className="inline-flex items-center gap-1 bg-oliva border border-linha px-2 py-0.5 text-[10px] text-caquiClaro font-mono"
                   >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
+                    {ins.nome}
+                    <button
+                      onClick={() => removeSgt(ins.id)}
+                      className="text-vermelho inline-flex items-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Assinatura / lema */}
