@@ -210,8 +210,11 @@ export default function App({
     setDto((prev) => {
       if (!prev) return prev;
       const escala = prev.escala.map((d) => ({ ...d }) as DiaEscala);
-      escala[dia][func] = [...escala[dia][func]];
-      escala[dia][func][idx] = { num: pessoa.num, nome: pessoa.nome };
+      // Preenche buracos: vagas faltando viram VAZIO até o índice editado.
+      const arr = [...(escala[dia][func] || [])];
+      while (arr.length <= idx) arr.push({ num: "---", nome: "VAZIO" });
+      arr[idx] = { num: pessoa.num, nome: pessoa.nome };
+      escala[dia][func] = arr;
       return { ...prev, escala };
     });
     setEditando(null);
@@ -1418,7 +1421,11 @@ function EscalaTab({
                       key={dia}
                       className="p-1.5 align-top border-l border-linha"
                     >
-                      {(escala[dia]?.[func] || []).map((g, idx) => {
+                      {Array.from({ length: VAGAS[func] }).map((_, idx) => {
+                        const g =
+                          escala[dia]?.[func]?.[idx] ??
+                          { num: "---", nome: "VAZIO" };
+                        const vazio = g.num === "---" || g.nome === "VAZIO";
                         const esta =
                           editando?.dia === dia &&
                           editando?.func === func &&
@@ -1437,19 +1444,35 @@ function EscalaTab({
                             onClick={() =>
                               !fechada && setEditando({ dia, func, idx })
                             }
-                            title={fechada ? "Escala fechada" : "Substituir"}
+                            title={
+                              fechada
+                                ? "Escala fechada"
+                                : vazio
+                                ? "Preencher vaga"
+                                : "Substituir"
+                            }
                             className={`bg-preto px-2 py-1 mb-1 text-[11px] flex gap-1.5 items-center font-mono ${
                               fechada ? "" : "cursor-pointer hover:bg-olivaClaro"
-                            }`}
+                            } ${vazio ? "border-dashed" : ""}`}
                             style={{
-                              border: `1px solid ${cor}44`,
+                              border: vazio
+                                ? `1px dashed ${cor}66`
+                                : `1px solid ${cor}44`,
                               borderLeft: `2px solid ${cor}`,
                             }}
                           >
-                            <span className="text-amareloMil font-bold">
-                              {g.num}
-                            </span>
-                            <span className="text-caquiClaro">{g.nome}</span>
+                            {vazio ? (
+                              <span className="text-areia italic">
+                                {fechada ? "—" : "+ preencher vaga"}
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-amareloMil font-bold">
+                                  {g.num}
+                                </span>
+                                <span className="text-caquiClaro">{g.nome}</span>
+                              </>
+                            )}
                           </div>
                         );
                       })}
