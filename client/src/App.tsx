@@ -41,7 +41,7 @@ function Conteudo() {
     case "usuarios":
       return isSuper ? <UsuariosTab /> : <EscalaTab />;
     case "auditoria":
-      return isSuper ? <AuditoriaTab /> : <EscalaTab />;
+      return <AuditoriaTab />;
     default:
       return <EscalaTab />;
   }

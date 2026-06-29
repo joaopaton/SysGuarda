@@ -45,7 +45,7 @@ const GRUPOS: { grupo: string; itens: Item[] }[] = [
     itens: [
       { secao: "efetivo", label: "Efetivo", icon: Users },
       { secao: "usuarios", label: "Usuários", icon: UserCog, super: true },
-      { secao: "auditoria", label: "Auditoria", icon: ScrollText, super: true },
+      { secao: "auditoria", label: "Auditoria", icon: ScrollText },
     ],
   },
 ];

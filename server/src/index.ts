@@ -110,8 +110,8 @@ app.use("/api/history", historyRouter);
 app.use("/api/aditamento", aditamentoRouter);
 // Gestão de usuários: só o Comandante (superadmin).
 app.use("/api/users", requireSuperadmin, usersRouter);
-// Trilha de auditoria: só o Comandante consulta.
-app.use("/api/audit", requireSuperadmin, auditRouter);
+// Trilha de auditoria: Comandante vê tudo; instrutor/monitor só a sua turma (no router).
+app.use("/api/audit", auditRouter);
 
 // ===== Frontend (produção) =====
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

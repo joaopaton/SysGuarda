@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { Router } from "express";
 import { prisma } from "./prisma.js";
+import { isSuperadmin } from "./scope.js";
 
 // Métodos que alteram dados (os que entram na trilha de auditoria).
 const MUTACOES = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -146,16 +147,21 @@ export function auditoriaMiddleware(req: Request, res: Response, next: NextFunct
 export const auditRouter = Router();
 
 // GET /api/audit?limit=&offset=  -> página de entradas (mais recentes primeiro).
+// Comandante vê tudo; instrutor/monitor só os registros da própria turma.
 auditRouter.get("/", async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query?.limit) || 100, 1), 200);
   const offset = Math.max(Number(req.query?.offset) || 0, 0);
+  const where = isSuperadmin(req)
+    ? {}
+    : { turmaId: req.user?.turmaId ?? "__sem_turma__" };
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       take: limit,
       skip: offset,
     }),
-    prisma.auditLog.count(),
+    prisma.auditLog.count({ where }),
   ]);
   res.json({ logs, total, offset, limit, retencaoDias: RETENCAO_DIAS });
 });
