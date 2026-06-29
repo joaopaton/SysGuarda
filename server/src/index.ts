@@ -27,6 +27,9 @@ import { missionsRouter } from "./routes/missions.js";
 
 const app = express();
 
+// Atrás do Nginx (proxy reverso): confia no 1º hop p/ IP/protocolo reais.
+app.set("trust proxy", 1);
+
 app.use(cors({ credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 
