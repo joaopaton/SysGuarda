@@ -10,6 +10,7 @@ export type Secao =
   | "painel"
   | "escala"
   | "salvas"
+  | "calendario"
   | "presenca"
   | "horas"
   | "missoes"

@@ -161,6 +161,48 @@ missionsRouter.post("/", async (req, res) => {
   res.status(201).json({ id: m.id });
 });
 
+// POST /api/missions/lote { date?, descricao, horas, ids: string[] }
+// Lança a MESMA missão (data/descrição/horas) para vários militares de uma vez.
+// Escopo: super = qualquer um; instrutor/monitor = só os da própria turma
+// (os demais são ignorados e contados em "ignorados").
+missionsRouter.post("/lote", async (req, res) => {
+  const ids = Array.isArray(req.body?.ids)
+    ? req.body.ids.filter((x: unknown) => typeof x === "string").slice(0, 2000)
+    : [];
+  const descricao = str(req.body?.descricao, 200);
+  const horas = Number(req.body?.horas);
+  if (ids.length === 0) {
+    return res.status(400).json({ error: "Selecione ao menos um militar." });
+  }
+  if (!Number.isFinite(horas) || horas <= 0) {
+    return res.status(400).json({ error: "horas inválidas" });
+  }
+  const dataRaw = str(req.body?.date, 10);
+  const date = /^\d{4}-\d{2}-\d{2}/.test(dataRaw) ? new Date(dataRaw) : null;
+
+  const sup = isSuperadmin(req);
+  const pessoas = await prisma.person.findMany({
+    where: { id: { in: ids }, active: true },
+  });
+  const noEscopo = pessoas.filter((p) => sup || p.turmaId === req.user?.turmaId);
+  if (noEscopo.length === 0) {
+    return res.status(400).json({ error: "Nenhum militar da sua turma na seleção." });
+  }
+
+  await prisma.mission.createMany({
+    data: noEscopo.map((p) => ({
+      date,
+      descricao,
+      horas,
+      turmaId: p.turmaId,
+      personId: p.id,
+      personNum: p.num,
+      personNome: p.nome,
+    })),
+  });
+  res.json({ criadas: noEscopo.length, ignorados: ids.length - noEscopo.length });
+});
+
 // POST /api/missions/importar { csv } -> importação em lote escopada por turma.
 // Colunas toleradas: num;nome;data;descricao;horas (separador ; , \t).
 const semAcento = (s: string) =>

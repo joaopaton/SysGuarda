@@ -194,3 +194,18 @@ export const COR_FUNC: Record<Funcao, string> = {
   "Permanência Tarde": "#8b5cf6",
   "Guardas do TG": "#f59e0b",
 };
+
+/** Paleta estável para distinguir turmas em calendário e gráficos. */
+export const CORES_TURMA = [
+  "#3b82f6", // azul
+  "#f59e0b", // âmbar
+  "#8b5cf6", // violeta
+  "#10b981", // esmeralda
+  "#ec4899", // rosa
+  "#06b6d4", // ciano
+] as const;
+
+/** Cor de uma turma pela sua posição (ordem do rodízio / índice na lista). */
+export function corTurma(indice: number): string {
+  return CORES_TURMA[((indice % CORES_TURMA.length) + CORES_TURMA.length) % CORES_TURMA.length];
+}

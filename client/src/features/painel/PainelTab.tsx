@@ -1,21 +1,63 @@
-import { useEffect, useState } from "react";
-import { Users, Flag, ChevronRight, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Users, Flag, ChevronRight, AlertTriangle, BarChart3, Clock } from "lucide-react";
 import { api } from "../../lib/api";
-import type { Dashboard } from "../../lib/types";
+import type { Dashboard, HoursReport } from "../../lib/types";
+import { corTurma } from "../../lib/types";
 import { useNav } from "../../state/NavContext";
 import { Card } from "../../components/ui/Card";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { Stat } from "../../components/ui/Stat";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
+import { BarChart, Legenda } from "../../components/ui/BarChart";
+
+const COR_MONITOR = "#22c55e";
 
 export function PainelTab() {
   const { aplicarFoco, irPara, setErro } = useNav();
   const [dash, setDash] = useState<Dashboard | null>(null);
+  const [horas, setHoras] = useState<HoursReport | null>(null);
 
   useEffect(() => {
     api.getDashboard().then(setDash).catch((e) => setErro((e as Error).message));
+    api.getHours().then(setHoras).catch(() => {});
   }, [setErro]);
+
+  // Cor estável por turma (segue a ordem do rodízio).
+  const corPorTurma = useMemo(() => {
+    const m = new Map<string, string>();
+    dash?.turmas.forEach((t, i) => m.set(t.id, corTurma(i)));
+    return m;
+  }, [dash]);
+
+  const efetivoPorTurma = useMemo(
+    () =>
+      (dash?.turmas ?? []).map((t) => ({
+        rotulo: t.codigo,
+        segmentos: [
+          { valor: t.guardas, cor: corPorTurma.get(t.id) ?? "#3b82f6", rotulo: "Guardas" },
+          { valor: t.monitores, cor: COR_MONITOR, rotulo: "Monitores" },
+        ],
+      })),
+    [dash, corPorTurma]
+  );
+
+  const horasPorTurma = useMemo(
+    () =>
+      (horas?.turmas ?? [])
+        .map((t) => ({
+          rotulo: t.codigo,
+          segmentos: [
+            {
+              valor: t.pessoas.reduce((a, p) => a + p.total, 0),
+              cor: corPorTurma.get(t.id) ?? "#3b82f6",
+              rotulo: "Horas",
+            },
+          ],
+        }))
+        .filter((b) => b.segmentos[0].valor > 0),
+    [horas, corPorTurma]
+  );
 
   const fmt = (iso: string | null) =>
     iso
@@ -48,6 +90,32 @@ export function PainelTab() {
       {!dash ? (
         <p className="text-textoSec text-sm">Carregando…</p>
       ) : (
+        <>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-texto">
+              <BarChart3 size={16} className="text-verde" /> Efetivo por turma
+            </div>
+            <BarChart dados={efetivoPorTurma} />
+            <Legenda
+              itens={[
+                { rotulo: "Guardas", cor: "#3b82f6" },
+                { rotulo: "Monitores", cor: COR_MONITOR },
+              ]}
+            />
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-texto">
+              <Clock size={16} className="text-verde" /> Horas contabilizadas por turma
+            </div>
+            <BarChart
+              dados={horasPorTurma}
+              unidade="h"
+              vazio="Nenhuma guarda fechada ainda — feche guardas para contabilizar horas."
+            />
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {dash.turmas.map((t) => {
             const naSemana = t.id === dash.proximaTurmaId;
@@ -105,6 +173,7 @@ export function PainelTab() {
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

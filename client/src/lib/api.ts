@@ -205,6 +205,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ csv }),
     }),
+  addMissionsLote: (m: {
+    date: string | null;
+    descricao: string;
+    horas: number;
+    ids: string[];
+  }) =>
+    req<{ criadas: number; ignorados?: number }>("/api/missions/lote", {
+      method: "POST",
+      body: JSON.stringify(m),
+    }),
   removeMission: (id: string) =>
     req<void>(`/api/missions/${id}`, { method: "DELETE" }),
   getMissaoConfig: () => req<{ metaHoras: number }>("/api/missions/config"),
