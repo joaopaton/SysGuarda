@@ -134,34 +134,38 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="shrink-0 border-t border-borda p-3 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-verdeTint text-verdeTexto flex items-center justify-center text-xs font-semibold shrink-0">
-            {iniciais}
-          </div>
-          <div className="leading-tight min-w-0 flex-1">
-            <div className="text-[13px] text-texto truncate">{user?.username}</div>
-            <div className="text-[11px] text-textoTen">
-              {papel}
-              {user?.turma ? ` · ${user.turma.codigo}` : ""}
+        <div className="shrink-0 border-t border-borda p-3">
+          <div className="flex items-center gap-2.5 mb-2.5">
+            <div className="w-8 h-8 rounded-full bg-verdeTint text-verdeTexto flex items-center justify-center text-xs font-semibold shrink-0">
+              {iniciais}
+            </div>
+            <div className="leading-tight min-w-0 flex-1">
+              <div className="text-[13px] text-texto truncate">{user?.username}</div>
+              <div className="text-[11px] text-textoTen truncate">
+                {papel}
+                {user?.turma ? ` · ${user.turma.codigo}` : ""}
+              </div>
             </div>
           </div>
-          <button
-            onClick={() => setSenhaAberta(true)}
-            title="Trocar senha"
-            aria-label="Trocar senha"
-            className="w-9 h-9 rounded-lg border border-borda text-textoSec hover:bg-cartaoAlt hover:text-verde transition-colors inline-flex items-center justify-center"
-          >
-            <KeyRound size={16} />
-          </button>
-          <ThemeToggle />
-          <button
-            onClick={onLogout}
-            title="Sair"
-            aria-label="Sair"
-            className="w-9 h-9 rounded-lg border border-borda text-textoSec hover:bg-cartaoAlt hover:text-vermelho transition-colors inline-flex items-center justify-center"
-          >
-            <LogOut size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSenhaAberta(true)}
+              title="Trocar senha"
+              aria-label="Trocar senha"
+              className="flex-1 h-9 rounded-lg border border-borda text-textoSec hover:bg-cartaoAlt hover:text-verde transition-colors inline-flex items-center justify-center"
+            >
+              <KeyRound size={16} />
+            </button>
+            <ThemeToggle />
+            <button
+              onClick={onLogout}
+              title="Sair"
+              aria-label="Sair"
+              className="flex-1 h-9 rounded-lg border border-borda text-textoSec hover:bg-cartaoAlt hover:text-vermelho transition-colors inline-flex items-center justify-center"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </aside>
 
