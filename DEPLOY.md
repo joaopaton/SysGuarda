@@ -63,10 +63,16 @@ npm run build
 DATABASE_URL="postgresql://sysguarda:senha_forte_aqui@localhost:5432/sysguarda?schema=public"
 PORT=3333
 NODE_ENV=production
-APP_USER=admin
-APP_PASSWORD=uma_senha_bem_forte      # protege todo o app (Basic Auth)
+APP_USER=admin                        # superadmin de socorro (seed)
+APP_PASSWORD=uma_senha_bem_forte      # ativa o login por usuário/senha
+APP_SECRET=                           # aleatório longo (openssl rand -hex 32) p/ assinar a sessão
 CLIENT_DIST=/var/www/sysguarda/client/dist
+# AUDIT_RETENTION_DIAS=90             # opcional: dias de retenção da trilha de auditoria
 ```
+
+> Login: tela própria por usuário/senha, sessão por cookie assinado (HMAC com
+> `APP_SECRET`, ou `APP_PASSWORD` se o secret faltar). Defina **os dois** em
+> produção. As contas (Comandante/instrutores/monitor) vêm do `prod:seed`.
 
 ## 4. Frontend
 
@@ -134,7 +140,12 @@ pm2 restart sysguarda
 
 - **Login**: tela própria por usuário/senha (sessão por cookie assinado). Defina
   `APP_SECRET` (aleatório longo) e `APP_PASSWORD` em produção.
-- **Backup**: `pg_dump sysguarda > backup.sql` periodicamente.
+- **Backup**: use o script pronto `server/scripts/backup-db.sh` (`pg_dump -Fc`
+  do banco inteiro + cópia do `.env`, rotação de 15 dias em `/var/backups/sysguarda`).
+  Agende no cron:
+  `30 3 * * * /var/www/sysguarda/server/scripts/backup-db.sh >> /var/log/sysguarda-backup.log 2>&1`.
+  Restaurar: `pg_restore --clean --if-exists -d "$DATABASE_URL_sem_schema" arquivo.dump`.
+  Os backups ficam **na própria VPS** — para desastre, copie os dumps p/ fora.
 - **Dev local** continua em SQLite (sem mudar nada): `npm run dev` em `server/`
   e `client/`. O schema de produção é derivado automaticamente do `schema.prisma`
   pelo `npm run prod:schema`.
