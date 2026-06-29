@@ -33,6 +33,9 @@ export const VAZIO = { num: "---", nome: "VAZIO" };
 export interface Pessoa {
   num: string;
   nome: string;
+  /** Registro da guarda (opcional): faltou? + observação. */
+  falta?: boolean;
+  obs?: string | null;
 }
 
 export const keyOf = (p: Pessoa) => p.num + p.nome;

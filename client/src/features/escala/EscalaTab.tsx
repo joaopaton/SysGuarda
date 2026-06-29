@@ -21,7 +21,7 @@ import { exportarPDF, exportarEscalaCSV } from "../../lib/export";
 import { useAppData } from "../../state/AppDataContext";
 import { useNav } from "../../state/NavContext";
 import { useEscala } from "../../state/EscalaContext";
-import { SeletorPessoa } from "../../components/SeletorPessoa";
+import { VagaEditor } from "./VagaEditor";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -41,7 +41,7 @@ export function EscalaTab() {
     msg,
     fechar,
     reabrir,
-    editarCelula,
+    aplicarVaga,
     baixarHistorico,
     setShowAditamento,
     importarEscalaCsv,
@@ -187,33 +187,57 @@ export function EscalaTab() {
                         const esta =
                           editando?.dia === dia && editando?.func === func && editando?.idx === idx;
                         return esta && !fechada ? (
-                          <SeletorPessoa
+                          <VagaEditor
                             key={idx}
                             atual={g}
                             opcoes={func === "Cmt Gd TG" ? monitores : guardas}
-                            onSelecionar={(p) => { editarCelula(dia, func, idx, p); setEditando(null); }}
+                            onAplicar={(v) => { aplicarVaga(dia, func, idx, v); setEditando(null); }}
                             onCancelar={() => setEditando(null)}
                           />
                         ) : (
                           <div
                             key={idx}
                             onClick={() => !fechada && setEditando({ dia, func, idx })}
-                            title={fechada ? "Escala fechada" : vazio ? "Preencher vaga" : "Substituir"}
-                            className={`px-2 py-1 mb-1 text-xs flex gap-1.5 items-center rounded-md bg-cartaoAlt ${
+                            title={
+                              fechada
+                                ? g.obs || "Escala fechada"
+                                : g.obs
+                                ? `Obs: ${g.obs}`
+                                : vazio
+                                ? "Preencher vaga"
+                                : "Substituir / marcar falta"
+                            }
+                            className={`px-2 py-1 mb-1 text-xs rounded-md bg-cartaoAlt ${
                               fechada ? "" : "cursor-pointer hover:bg-superficie"
                             }`}
                             style={{
-                              border: vazio ? `1px dashed ${cor}66` : `1px solid ${cor}44`,
-                              borderLeft: `2px solid ${cor}`,
+                              border: g.falta
+                                ? `1px solid var(--vermelho, #c0392b)`
+                                : vazio
+                                ? `1px dashed ${cor}66`
+                                : `1px solid ${cor}44`,
+                              borderLeft: `2px solid ${g.falta ? "#c0392b" : cor}`,
                             }}
                           >
-                            {vazio ? (
-                              <span className="text-textoTen italic">{fechada ? "—" : "+ preencher"}</span>
-                            ) : (
-                              <>
-                                <span className="text-textoTen font-mono">{g.num}</span>
-                                <span className="text-texto">{g.nome}</span>
-                              </>
+                            <span className="flex gap-1.5 items-center">
+                              {vazio ? (
+                                <span className="text-textoTen italic">{fechada ? "—" : "+ preencher"}</span>
+                              ) : (
+                                <>
+                                  <span className="text-textoTen font-mono">{g.num}</span>
+                                  <span className={g.falta ? "text-vermelho line-through" : "text-texto"}>
+                                    {g.nome}
+                                  </span>
+                                  {g.falta && (
+                                    <span className="text-[9px] font-bold text-vermelho">FALTOU</span>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                            {g.obs && (
+                              <span className="block text-[10px] text-ambar truncate mt-0.5">
+                                ⚑ {g.obs}
+                              </span>
                             )}
                           </div>
                         );

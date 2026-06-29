@@ -133,6 +133,10 @@ async function assignmentsData(escala: Escala, turmaId: string | null) {
     FUNCOES.flatMap((func: Funcao) =>
       (dia[func] || []).map((p, slot) => {
         const person = byKey.get(keyOf(p));
+        const obs =
+          typeof p.obs === "string" && p.obs.trim()
+            ? p.obs.trim().slice(0, 300)
+            : null;
         return {
           dayIndex,
           funcao: func,
@@ -140,6 +144,8 @@ async function assignmentsData(escala: Escala, turmaId: string | null) {
           personId: person?.id ?? null,
           personNum: p.num,
           personNome: p.nome,
+          falta: !!p.falta,
+          obs,
         };
       })
     )
@@ -273,6 +279,8 @@ scheduleRouter.get("/:id", async (req, res) => {
     (dia[a.funcao as Funcao] ??= [])[a.slot] = {
       num: a.personNum,
       nome: a.personNome,
+      falta: a.falta || undefined,
+      obs: a.obs || undefined,
     };
   }
   res.json(escalaParaDTO(sch.startDate, escala, sch.turma, sch.status));

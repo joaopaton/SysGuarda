@@ -147,6 +147,10 @@ model Assignment {
   personNum  String
   personNome String
 
+  // Registro da guarda: faltou? + observação livre (fica salvo na escala).
+  falta Boolean @default(false)
+  obs   String?
+
   @@unique([scheduleId, dayIndex, funcao, slot])
   @@index([scheduleId])
 }

@@ -30,7 +30,7 @@ hoursRouter.get("/", async (req, res) => {
   };
   for (const sch of fechadas) {
     for (const a of sch.assignments) {
-      if (a.personNum === "---") continue;
+      if (a.personNum === "---" || a.falta) continue; // faltou: não conta horas
       const d = new Date(sch.startDate);
       d.setDate(d.getDate() + a.dayIndex);
       const mes = d.getMonth() + 1;

@@ -42,6 +42,12 @@ interface EscalaCtx {
     idx: number,
     pessoa: { num: string; nome: string }
   ) => void;
+  aplicarVaga: (
+    dia: number,
+    func: Func,
+    idx: number,
+    vaga: { num: string; nome: string; falta?: boolean; obs?: string | null }
+  ) => void;
   baixarHistorico: () => void;
 }
 
@@ -181,6 +187,32 @@ export function EscalaProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // Aplica pessoa + registro (falta/observação) à vaga, preservando o resto.
+  const aplicarVaga = useCallback(
+    (
+      dia: number,
+      func: Func,
+      idx: number,
+      vaga: { num: string; nome: string; falta?: boolean; obs?: string | null }
+    ) => {
+      setDto((prev) => {
+        if (!prev) return prev;
+        const escala = prev.escala.map((d) => ({ ...d }) as DiaEscala);
+        const arr = [...(escala[dia][func] || [])];
+        while (arr.length <= idx) arr.push({ num: "---", nome: "VAZIO" });
+        arr[idx] = {
+          num: vaga.num,
+          nome: vaga.nome,
+          falta: vaga.falta || undefined,
+          obs: vaga.obs?.trim() ? vaga.obs.trim() : undefined,
+        };
+        escala[dia][func] = arr;
+        return { ...prev, escala };
+      });
+    },
+    []
+  );
+
   const baixarHistorico = useCallback(() => {
     if (!dto) return;
     const cont: Record<string, { num: string; nome: string; guardas: number }> = {};
@@ -220,6 +252,7 @@ export function EscalaProvider({ children }: { children: ReactNode }) {
         reabrir,
         importarEscalaCsv,
         editarCelula,
+        aplicarVaga,
         baixarHistorico,
       }}
     >

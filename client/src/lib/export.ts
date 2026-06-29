@@ -28,7 +28,11 @@ export function exportarEscalaCSV(dias: string[], escala: DiaEscala[]) {
     for (let v = 0; v < VAGAS[func]; v++) {
       const cels = dias.map((_, d) => {
         const p = escala[d]?.[func]?.[v];
-        return p ? `${p.num} ${p.nome}` : "";
+        if (!p) return "";
+        let s = `${p.num} ${p.nome}`;
+        if (p.falta) s += " [FALTOU]";
+        if (p.obs) s += ` (${p.obs})`;
+        return s;
       });
       const rotulo = v === 0 ? func : "";
       linhas.push([rotulo, ...cels].map(csvCampo).join(sep));
@@ -70,7 +74,15 @@ export function exportarPDF(dias: string[], escala: DiaEscala[]) {
     html += `<tr><td class="func">${func.toUpperCase()}</td>`;
     dias.forEach((_, d) => {
       const cels = (escala[d]?.[func] || [])
-        .map((p) => `<span class="num">${p.num}</span> ${p.nome}`)
+        .map((p) => {
+          const nome = p.falta
+            ? `<span style="color:#c0392b;text-decoration:line-through">${p.nome}</span> <b style="color:#c0392b">FALTOU</b>`
+            : p.nome;
+          const obs = p.obs
+            ? `<div style="font-size:9px;color:#a06000">⚑ ${p.obs}</div>`
+            : "";
+          return `<span class="num">${p.num}</span> ${nome}${obs}`;
+        })
         .join("<br>");
       html += `<td>${cels}</td>`;
     });

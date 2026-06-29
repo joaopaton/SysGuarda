@@ -17,6 +17,9 @@ export const VAGAS: Record<Funcao, number> = {
 export interface Pessoa {
   num: string;
   nome: string;
+  /** Registro da guarda (opcional): faltou? + observação livre. */
+  falta?: boolean;
+  obs?: string | null;
 }
 
 export interface TurmaResumo {
