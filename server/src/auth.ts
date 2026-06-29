@@ -112,7 +112,8 @@ export function emitirSessao(res: Response, uid: string) {
   res.cookie(COOKIE, criarToken(uid), {
     httpOnly: true,
     sameSite: "lax",
-    secure: false, // ainda em HTTP por IP; ligar quando houver HTTPS
+    // Secure (só HTTPS) em produção; em dev local (HTTP) fica desligado.
+    secure: process.env.NODE_ENV === "production",
     maxAge: VALIDADE_MS,
     path: "/",
   });
