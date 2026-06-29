@@ -10,12 +10,15 @@ import {
   Users,
   UserCog,
   LogOut,
+  KeyRound,
   X,
 } from "lucide-react";
+import { useState } from "react";
 import { BRASAO } from "../../brasao";
 import { useAppData } from "../../state/AppDataContext";
 import { useNav, type Secao } from "../../state/NavContext";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { SenhaModal } from "../SenhaModal";
 
 type Item = { secao: Secao; label: string; icon: typeof Clock; super?: boolean };
 
@@ -56,6 +59,7 @@ export function Sidebar({
 }) {
   const { user, isSuper } = useAppData();
   const { secao, irPara } = useNav();
+  const [senhaAberta, setSenhaAberta] = useState(false);
   const iniciais = (user?.username ?? "?").slice(0, 2).toUpperCase();
   const papel =
     user?.role === "superadmin"
@@ -141,6 +145,14 @@ export function Sidebar({
               {user?.turma ? ` · ${user.turma.codigo}` : ""}
             </div>
           </div>
+          <button
+            onClick={() => setSenhaAberta(true)}
+            title="Trocar senha"
+            aria-label="Trocar senha"
+            className="w-9 h-9 rounded-lg border border-borda text-textoSec hover:bg-cartaoAlt hover:text-verde transition-colors inline-flex items-center justify-center"
+          >
+            <KeyRound size={16} />
+          </button>
           <ThemeToggle />
           <button
             onClick={onLogout}
@@ -152,6 +164,8 @@ export function Sidebar({
           </button>
         </div>
       </aside>
+
+      {senhaAberta && <SenhaModal onClose={() => setSenhaAberta(false)} />}
     </>
   );
 }

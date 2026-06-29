@@ -13,7 +13,7 @@ import {
   requireSuperadmin,
 } from "./auth.js";
 import { prisma } from "./prisma.js";
-import { verifyPassword } from "./password.js";
+import { hashPassword, verifyPassword } from "./password.js";
 import { peopleRouter } from "./routes/people.js";
 import { scheduleRouter } from "./routes/schedule.js";
 import { historyRouter } from "./routes/history.js";
@@ -69,6 +69,31 @@ app.post("/api/logout", (_req, res) => {
 
 // ===== Rotas protegidas =====
 app.use("/api", requireAuth);
+
+// Trocar a própria senha (qualquer papel, estando logado).
+app.post("/api/me/password", async (req, res) => {
+  if (!loginAtivo()) {
+    return res.status(400).json({ error: "Sem login em modo de desenvolvimento." });
+  }
+  const atual = String(req.body?.atual ?? "");
+  const nova = String(req.body?.nova ?? "");
+  if (nova.length < 4) {
+    return res.status(400).json({ error: "Nova senha com ao menos 4 caracteres." });
+  }
+  const user = await prisma.user.findUnique({ where: { id: req.user!.uid } });
+  if (!user || !user.active) {
+    return res.status(404).json({ error: "Usuário não encontrado." });
+  }
+  if (!verifyPassword(atual, user.passwordHash)) {
+    return res.status(401).json({ error: "Senha atual incorreta." });
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: hashPassword(nova) },
+  });
+  res.json({ ok: true });
+});
+
 app.use("/api/turmas", turmasRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/hours", hoursRouter);

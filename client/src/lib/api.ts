@@ -34,6 +34,11 @@ export const api = {
       body: JSON.stringify({ usuario, senha }),
     }),
   logout: () => req<{ ok: boolean }>("/api/logout", { method: "POST" }),
+  trocarMinhaSenha: (atual: string, nova: string) =>
+    req<{ ok: boolean }>("/api/me/password", {
+      method: "POST",
+      body: JSON.stringify({ atual, nova }),
+    }),
 
   // Turmas
   getTurmas: () => req<Turma[]>("/api/turmas"),
