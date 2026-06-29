@@ -8,6 +8,7 @@ import { PainelTab } from "./features/painel/PainelTab";
 import { ConfigTab } from "./features/comando/ConfigTab";
 import { EscalaTab } from "./features/escala/EscalaTab";
 import { SalvasTab } from "./features/salvas/SalvasTab";
+import { CalendarioTab } from "./features/calendario/CalendarioTab";
 import { PresencaTab } from "./features/presenca/PresencaTab";
 import { HorasTab } from "./features/horas/HorasTab";
 import { MissoesSecao } from "./features/horas/MissoesSecao";
@@ -26,6 +27,8 @@ function Conteudo() {
       return <EscalaTab />;
     case "salvas":
       return <SalvasTab />;
+    case "calendario":
+      return <CalendarioTab />;
     case "presenca":
       return <PresencaTab />;
     case "horas":

@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarRange,
   Settings,
   Archive,
   ClipboardCheck,
@@ -29,6 +30,7 @@ const GRUPOS: { grupo: string; itens: Item[] }[] = [
       { secao: "comando", label: "Ordem de serviço", icon: Settings },
       { secao: "escala", label: "Escala", icon: CalendarDays },
       { secao: "salvas", label: "Escalas salvas", icon: Archive },
+      { secao: "calendario", label: "Calendário", icon: CalendarRange },
       { secao: "presenca", label: "Presença", icon: ClipboardCheck },
       { secao: "horas", label: "Horas de serviço", icon: Clock },
       { secao: "missoes", label: "Missões", icon: Flag },
