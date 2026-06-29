@@ -192,6 +192,10 @@ export const api = {
     );
   },
 
+  // Auditoria (só o Comandante)
+  getAudit: (limit = 200) =>
+    req<import("./types").AuditEntry[]>(`/api/audit?limit=${limit}`),
+
   // Horas complementares (missões)
   getMissions: (turmaId?: string | null) =>
     req<import("./types").MissoesReport>(

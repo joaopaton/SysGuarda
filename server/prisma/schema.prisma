@@ -155,6 +155,28 @@ model Assignment {
   @@index([scheduleId])
 }
 
+/// Trilha de auditoria: registra cada ação de escrita (quem/o quê/quando).
+/// Snapshot do usuário (sem FK) para o log nunca sumir/quebrar.
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId   String?
+  username String  @default("?")
+  role     String  @default("?")
+  turmaId  String?
+
+  acao    String
+  method  String
+  rota    String
+  status  Int
+  alvoId  String?
+  detalhe String?
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
 /// Presença na instrução da manhã (independente da guarda). 1 registro por pessoa/dia.
 /// status: "PRESENTE" | "FALTA" | "JUSTIFICADO". Identidade por (num, nome).
 model Attendance {

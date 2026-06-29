@@ -111,6 +111,21 @@ export interface PresencaHistorico {
   semTurma: PresencaLinha[];
 }
 
+export interface AuditEntry {
+  id: string;
+  createdAt: string;
+  userId: string | null;
+  username: string;
+  role: string;
+  turmaId: string | null;
+  acao: string;
+  method: string;
+  rota: string;
+  status: number;
+  alvoId: string | null;
+  detalhe: string | null;
+}
+
 export interface MissaoLancamento {
   id: string;
   date: string | null;

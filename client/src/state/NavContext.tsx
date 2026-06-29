@@ -16,7 +16,8 @@ export type Secao =
   | "missoes"
   | "efetivo"
   | "comando"
-  | "usuarios";
+  | "usuarios"
+  | "auditoria";
 
 interface NavCtx {
   secao: Secao;
