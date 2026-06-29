@@ -77,7 +77,7 @@ export function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 md:inset-y-auto md:sticky md:top-0 md:h-screen left-0 z-40 w-[208px] shrink-0 self-start bg-superficie border-r border-borda flex flex-col transition-transform md:translate-x-0 ${
+        className={`fixed top-0 left-0 z-40 h-[100dvh] w-[208px] bg-superficie border-r border-borda flex flex-col transition-transform md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
           mobileAberto ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -96,7 +96,7 @@ export function Sidebar({
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2.5 py-2">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2">
           {GRUPOS.map((g) => {
             const itens = g.itens.filter((i) => !i.super || isSuper);
             if (itens.length === 0) return null;
