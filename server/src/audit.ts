@@ -76,6 +76,19 @@ function resumoCorpo(body: unknown): string | null {
   return s ? s.slice(0, 240) : null;
 }
 
+// Retenção: apaga registros mais antigos que N dias (env AUDIT_RETENTION_DIAS).
+const RETENCAO_DIAS = Number(process.env.AUDIT_RETENTION_DIAS) || 90;
+let ultimaLimpeza = 0;
+
+/** Poda registros antigos — no máximo 1x/hora, best-effort. */
+function limparAntigos() {
+  const agora = Date.now();
+  if (agora - ultimaLimpeza < 60 * 60 * 1000) return;
+  ultimaLimpeza = agora;
+  const corte = new Date(agora - RETENCAO_DIAS * 24 * 60 * 60 * 1000);
+  prisma.auditLog.deleteMany({ where: { createdAt: { lt: corte } } }).catch(() => {});
+}
+
 /** Grava uma entrada de auditoria — best-effort, nunca derruba a requisição. */
 function registrar(data: {
   userId: string | null;
@@ -92,6 +105,7 @@ function registrar(data: {
   prisma.auditLog.create({ data }).catch(() => {
     /* nunca interrompe o fluxo principal por falha de log */
   });
+  limparAntigos();
 }
 
 /**
@@ -131,12 +145,17 @@ export function auditoriaMiddleware(req: Request, res: Response, next: NextFunct
 // ===== Consulta (só o Comandante) =====
 export const auditRouter = Router();
 
-// GET /api/audit?limit=  -> últimas N entradas (mais recentes primeiro).
+// GET /api/audit?limit=&offset=  -> página de entradas (mais recentes primeiro).
 auditRouter.get("/", async (req, res) => {
-  const limit = Math.min(Math.max(Number(req.query?.limit) || 200, 1), 1000);
-  const logs = await prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-  res.json(logs);
+  const limit = Math.min(Math.max(Number(req.query?.limit) || 100, 1), 200);
+  const offset = Math.max(Number(req.query?.offset) || 0, 0);
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    }),
+    prisma.auditLog.count(),
+  ]);
+  res.json({ logs, total, offset, limit, retencaoDias: RETENCAO_DIAS });
 });

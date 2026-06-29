@@ -18,19 +18,41 @@ const COR_METODO: Record<string, "verde" | "ambar" | "vermelho" | "neutro"> = {
   DELETE: "vermelho",
 };
 
+const PAGINA = 100;
+
 export function AuditoriaTab() {
   const { turmas } = useAppData();
   const { setErro } = useNav();
   const [logs, setLogs] = useState<AuditEntry[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [retencao, setRetencao] = useState(90);
+  const [carregandoMais, setCarregandoMais] = useState(false);
   const [busca, setBusca] = useState("");
 
   const carregar = useCallback(async () => {
     try {
-      setLogs(await api.getAudit(500));
+      const r = await api.getAudit(PAGINA, 0);
+      setLogs(r.logs);
+      setTotal(r.total);
+      setRetencao(r.retencaoDias);
     } catch (e) {
       setErro((e as Error).message);
     }
   }, [setErro]);
+
+  const carregarMais = useCallback(async () => {
+    if (!logs) return;
+    setCarregandoMais(true);
+    try {
+      const r = await api.getAudit(PAGINA, logs.length);
+      setLogs((prev) => [...(prev ?? []), ...r.logs]);
+      setTotal(r.total);
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setCarregandoMais(false);
+    }
+  }, [logs, setErro]);
 
   useEffect(() => {
     carregar();
@@ -66,7 +88,7 @@ export function AuditoriaTab() {
     <div>
       <SectionHeader
         title="Auditoria"
-        subtitle="Trilha de ações — quem fez o quê e quando. Apenas o Comandante visualiza."
+        subtitle={`Trilha de ações — quem fez o quê e quando · mantém os últimos ${retencao} dias.`}
         right={
           <Button variant="outline" size="sm" onClick={carregar}>
             <RotateCw size={14} /> Atualizar
@@ -131,6 +153,21 @@ export function AuditoriaTab() {
             </tbody>
           </table>
         </Card>
+      )}
+
+      {logs && (
+        <div className="flex items-center justify-center gap-3 mt-4 text-xs text-textoSec">
+          <span>
+            {busca
+              ? `${filtrados.length} de ${logs.length} carregado(s)`
+              : `${logs.length} de ${total} registro(s)`}
+          </span>
+          {!busca && logs.length < total && (
+            <Button variant="outline" size="sm" onClick={carregarMais} disabled={carregandoMais}>
+              {carregandoMais ? "Carregando…" : "Carregar mais"}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
