@@ -24,6 +24,7 @@ import { dashboardRouter } from "./routes/dashboard.js";
 import { hoursRouter } from "./routes/hours.js";
 import { attendanceRouter } from "./routes/attendance.js";
 import { missionsRouter } from "./routes/missions.js";
+import { auditoriaMiddleware, auditRouter } from "./audit.js";
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.post("/api/logout", (_req, res) => {
 
 // ===== Rotas protegidas =====
 app.use("/api", requireAuth);
+app.use("/api", auditoriaMiddleware); // trilha de auditoria (após resolver o usuário)
 
 // Trocar a própria senha (qualquer papel, estando logado).
 app.post("/api/me/password", async (req, res) => {
@@ -105,6 +107,8 @@ app.use("/api/history", historyRouter);
 app.use("/api/aditamento", aditamentoRouter);
 // Gestão de usuários: só o Comandante (superadmin).
 app.use("/api/users", requireSuperadmin, usersRouter);
+// Trilha de auditoria: só o Comandante consulta.
+app.use("/api/audit", requireSuperadmin, auditRouter);
 
 // ===== Frontend (produção) =====
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

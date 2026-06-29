@@ -45,6 +45,10 @@ export const api = {
 
   getDashboard: () => req<import("./types").Dashboard>("/api/dashboard"),
 
+  // Auditoria (só o Comandante)
+  getAudit: (limit = 200) =>
+    req<import("./types").AuditEntry[]>(`/api/audit?limit=${limit}`),
+
   // Usuários
   getUsers: () => req<Usuario[]>("/api/users"),
   addUser: (

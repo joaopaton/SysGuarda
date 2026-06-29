@@ -197,3 +197,26 @@ model MissaoConfig {
   metaHoras Int      @default(60)
   updatedAt DateTime @updatedAt
 }
+
+/// Trilha de auditoria: registra cada ação de escrita (quem, o quê, quando).
+/// Snapshot do usuário (username/role/turma) p/ o log sobreviver à remoção da conta.
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // Quem fez (snapshot — sem FK, para o log nunca sumir/quebrar).
+  userId   String?
+  username String  @default("?")
+  role     String  @default("?")
+  turmaId  String?
+
+  acao    String // rótulo amigável: "Gerou escala", "Criou usuário", ...
+  method  String // POST | PUT | PATCH | DELETE
+  rota    String // caminho normalizado: /api/schedule/:id
+  status  Int // status HTTP da resposta
+  alvoId  String? // id do registro afetado (quando há :id na rota)
+  detalhe String? // resumo de campos seguros do corpo (sem senhas)
+
+  @@index([createdAt])
+  @@index([userId])
+}

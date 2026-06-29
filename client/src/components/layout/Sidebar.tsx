@@ -9,6 +9,7 @@ import {
   Flag,
   Users,
   UserCog,
+  ScrollText,
   LogOut,
   KeyRound,
   X,
@@ -44,6 +45,7 @@ const GRUPOS: { grupo: string; itens: Item[] }[] = [
     itens: [
       { secao: "efetivo", label: "Efetivo", icon: Users },
       { secao: "usuarios", label: "Usuários", icon: UserCog, super: true },
+      { secao: "auditoria", label: "Auditoria", icon: ScrollText, super: true },
     ],
   },
 ];

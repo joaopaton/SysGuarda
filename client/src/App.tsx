@@ -14,6 +14,7 @@ import { HorasTab } from "./features/horas/HorasTab";
 import { MissoesSecao } from "./features/horas/MissoesSecao";
 import { EfetivoTab } from "./features/efetivo/EfetivoTab";
 import { UsuariosTab } from "./features/usuarios/UsuariosTab";
+import { AuditoriaTab } from "./features/auditoria/AuditoriaTab";
 
 function Conteudo() {
   const { secao } = useNav();
@@ -39,6 +40,8 @@ function Conteudo() {
       return <EfetivoTab />;
     case "usuarios":
       return isSuper ? <UsuariosTab /> : <EscalaTab />;
+    case "auditoria":
+      return isSuper ? <AuditoriaTab /> : <EscalaTab />;
     default:
       return <EscalaTab />;
   }
