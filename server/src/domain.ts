@@ -24,6 +24,19 @@ export const HORAS: Record<Funcao, number> = {
   "Guardas do TG": 12,
 };
 
+/** Pontuação disciplinar: saldo inicial e penalidades por falta na instrução. */
+export const PONTOS_INICIAL = 120;
+export const PENALIDADE_NAO_JUSTIFICADA = 4;
+export const PENALIDADE_JUSTIFICADA = 2;
+
+/** Saldo a partir das faltas (cumulativo, mínimo 0). */
+export function calcularPontos(faltasJustificadas: number, faltasNaoJustificadas: number): number {
+  const desconto =
+    faltasJustificadas * PENALIDADE_JUSTIFICADA +
+    faltasNaoJustificadas * PENALIDADE_NAO_JUSTIFICADA;
+  return Math.max(0, PONTOS_INICIAL - desconto);
+}
+
 export const DIAS_SEMANA = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
 
 export const NUM_DIAS = 7;

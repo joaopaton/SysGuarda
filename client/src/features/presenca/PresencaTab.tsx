@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ClipboardCheck, FileSpreadsheet, Printer, Save } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Printer, Save, Search } from "lucide-react";
 import { api } from "../../lib/api";
 import type { AttendanceRow, AttendanceStatus } from "../../lib/types";
 import { hojeISO, dataBR } from "../../lib/dates";
@@ -14,17 +14,20 @@ import { HistoricoPresenca } from "./HistoricoPresenca";
 const STATUS: { valor: AttendanceStatus; label: string; on: string }[] = [
   { valor: "PRESENTE", label: "P", on: "bg-verde text-noVerde border-verde" },
   { valor: "FALTA", label: "F", on: "bg-vermelho text-white border-vermelho" },
-  { valor: "JUSTIFICADO", label: "J", on: "bg-ambar text-white border-ambar" },
 ];
 
 export function PresencaTab() {
   const { isSuper, user, turmas } = useAppData();
+  // Só instrutor e Comandante classificam falta (justificada). Monitor não.
+  const podeClassificar =
+    user?.role === "superadmin" || user?.role === "instrutor";
   const { turmaFoco, setErro } = useNav();
   const [date, setDate] = useState(hojeISO());
   const [linhas, setLinhas] = useState<AttendanceRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [sub, setSub] = useState<"chamada" | "historico">("chamada");
+  const [busca, setBusca] = useState("");
 
   const turmaId = isSuper ? turmaFoco || null : user?.turma?.id ?? null;
   const turmaSemFoco = isSuper && !turmaFoco;
@@ -53,13 +56,36 @@ export function PresencaTab() {
   }, [carregar]);
 
   const setStatus = (i: number, status: AttendanceStatus) =>
-    setLinhas((prev) => prev.map((l, idx) => (idx === i ? { ...l, status } : l)));
+    setLinhas((prev) =>
+      prev.map((l, idx) =>
+        idx === i
+          ? { ...l, status, justificada: status === "FALTA" ? l.justificada : false }
+          : l
+      )
+    );
+
+  const toggleJustificada = (i: number) =>
+    setLinhas((prev) =>
+      prev.map((l, idx) =>
+        idx === i ? { ...l, justificada: !l.justificada } : l
+      )
+    );
 
   const salvar = async () => {
     setSalvando(true);
     setMsg(null);
     try {
       const r = await api.saveAttendance(date, turmaId, linhas);
+      // Instrutor/admin: aplica a classificação de cada falta após gravar a chamada.
+      if (podeClassificar) {
+        await Promise.all(
+          linhas
+            .filter((l) => l.status === "FALTA")
+            .map((l) =>
+              api.justificarFalta(date, turmaId, l.num, l.nome, l.justificada)
+            )
+        );
+      }
       setMsg(`Presença salva (${r.salvos} registro(s)).`);
     } catch (e) {
       setErro((e as Error).message);
@@ -70,7 +96,9 @@ export function PresencaTab() {
 
   const presentes = linhas.filter((l) => l.status === "PRESENTE").length;
   const faltas = linhas.filter((l) => l.status === "FALTA").length;
-  const justificados = linhas.filter((l) => l.status === "JUSTIFICADO").length;
+  const justificadas = linhas.filter(
+    (l) => l.status === "FALTA" && l.justificada
+  ).length;
 
   return (
     <div>
@@ -123,6 +151,19 @@ export function PresencaTab() {
         <Button variant="primary" size="sm" onClick={salvar}>
           <Save size={14} /> {salvando ? "Salvando…" : "Salvar"}
         </Button>
+        <div className="relative ml-auto">
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-textoTen pointer-events-none"
+          />
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por nº ou nome…"
+            className="w-full sm:w-56 bg-superficie border border-borda text-texto rounded-lg pl-9 pr-3 py-2 text-sm placeholder:text-textoTen"
+          />
+        </div>
       </div>
 
       {msg && (
@@ -141,11 +182,28 @@ export function PresencaTab() {
         <>
           <p className="text-sm text-textoSec mb-4">
             <span className="text-verdeTexto font-medium">{presentes} presentes</span> ·{" "}
-            <span className="text-vermelho font-medium">{faltas} faltas</span> ·{" "}
-            <span className="text-ambar font-medium">{justificados} justificados</span>
+            <span className="text-vermelho font-medium">{faltas} faltas</span>
+            {faltas > 0 && (
+              <>
+                {" "}·{" "}
+                <span className="text-ambar font-medium">
+                  {justificadas} justificada(s)
+                </span>
+              </>
+            )}
           </p>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-2.5">
-            {linhas.map((l, i) => (
+            {linhas
+              .map((l, i) => ({ l, i }))
+              .filter(({ l }) => {
+                const t = busca.trim().toLowerCase();
+                return (
+                  !t ||
+                  l.nome.toLowerCase().includes(t) ||
+                  l.num.toLowerCase().includes(t)
+                );
+              })
+              .map(({ l, i }) => (
               <div
                 key={l.num + l.nome}
                 className="bg-cartao border border-borda rounded-xl px-3.5 py-3 flex items-center justify-between gap-3"
@@ -157,7 +215,20 @@ export function PresencaTab() {
                     {l.isMonitor ? " · monitor" : ""}
                   </span>
                 </span>
-                <span className="flex gap-1.5 shrink-0">
+                <span className="flex items-center gap-1.5 shrink-0">
+                  {podeClassificar && l.status === "FALTA" && (
+                    <button
+                      onClick={() => toggleJustificada(i)}
+                      title={l.justificada ? "Falta justificada (-2)" : "Falta não justificada (-4)"}
+                      className={`h-8 px-2 rounded-lg text-xs font-semibold border transition-colors ${
+                        l.justificada
+                          ? "bg-ambar text-white border-ambar"
+                          : "border-borda text-textoTen hover:bg-cartaoAlt"
+                      }`}
+                    >
+                      {l.justificada ? "Just. −2" : "Justificar"}
+                    </button>
+                  )}
                   {STATUS.map((s) => (
                     <button
                       key={s.valor}
@@ -177,7 +248,10 @@ export function PresencaTab() {
             ))}
           </div>
           <p className="text-textoTen text-xs mt-4">
-            P = presente · F = falta · J = justificado · não marcado conta como presente.
+            P = presente · F = falta · não marcado conta como presente.
+            {podeClassificar
+              ? " Falta vale −4 pontos; marque “Justificar” para −2."
+              : ""}
           </p>
         </>
       )}

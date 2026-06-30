@@ -75,13 +75,15 @@ export interface HoursReport {
   semTurma: HoursPessoa[];
 }
 
-export type AttendanceStatus = "PRESENTE" | "FALTA" | "JUSTIFICADO";
+export type AttendanceStatus = "PRESENTE" | "FALTA";
 
 export interface AttendanceRow {
   num: string;
   nome: string;
   isMonitor: boolean;
   status: AttendanceStatus;
+  /** Só relevante quando status === "FALTA" (false = -4 pts, true = -2 pts). */
+  justificada: boolean;
 }
 
 export interface AttendanceDTO {
@@ -90,14 +92,49 @@ export interface AttendanceDTO {
   linhas: AttendanceRow[];
 }
 
+export interface PresencaDia {
+  status: AttendanceStatus;
+  justificada: boolean;
+}
+
 export interface PresencaLinha {
   num: string;
   nome: string;
   isMonitor: boolean;
   presentes: number;
   faltas: number;
-  justificados: number;
-  dias: Record<string, AttendanceStatus>;
+  faltasJustificadas: number;
+  faltasNaoJustificadas: number;
+  pontos: number;
+  dias: Record<string, PresencaDia>;
+}
+
+export interface PontosFalta {
+  date: string;
+  justificada: boolean;
+}
+
+export interface PontosPessoa {
+  num: string;
+  nome: string;
+  isMonitor: boolean;
+  faltasJustificadas: number;
+  faltasNaoJustificadas: number;
+  pontos: number;
+  faltas: PontosFalta[];
+}
+
+export interface PontosTurma {
+  id: string;
+  codigo: string;
+  apelido: string;
+  pessoas: PontosPessoa[];
+}
+
+export interface PontosReport {
+  inicial: number;
+  turmas: PontosTurma[];
+  semTurma: PontosPessoa[];
 }
 
 export interface PresencaHistorico {
@@ -187,6 +224,7 @@ export interface TurmaResumoPainel {
   monitoresAusentes: number;
   escalas: number;
   ultimaEscala: string | null;
+  pontosMedia: number;
 }
 
 export interface Dashboard {
@@ -205,6 +243,11 @@ export interface AditamentoConfig {
   funcaoAssinante: string;
   lema: string;
 }
+
+/** Pontuação disciplinar (espelha server/src/domain.ts). */
+export const PONTOS_INICIAL = 120;
+export const PENALIDADE_JUSTIFICADA = 2;
+export const PENALIDADE_NAO_JUSTIFICADA = 4;
 
 export const COR_FUNC: Record<Funcao, string> = {
   "Cmt Gd TG": "#22c55e",

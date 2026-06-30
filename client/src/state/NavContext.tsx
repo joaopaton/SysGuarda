@@ -12,6 +12,7 @@ export type Secao =
   | "salvas"
   | "calendario"
   | "presenca"
+  | "pontos"
   | "horas"
   | "missoes"
   | "efetivo"

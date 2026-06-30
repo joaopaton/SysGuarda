@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, Flag, ChevronRight, AlertTriangle, BarChart3, Clock } from "lucide-react";
+import { Users, Flag, ChevronRight, AlertTriangle, BarChart3, Clock, ShieldAlert } from "lucide-react";
 import { api } from "../../lib/api";
 import type { Dashboard, HoursReport } from "../../lib/types";
 import { corTurma } from "../../lib/types";
@@ -59,6 +59,21 @@ export function PainelTab() {
     [horas, corPorTurma]
   );
 
+  const pontosPorTurma = useMemo(
+    () =>
+      (dash?.turmas ?? []).map((t) => ({
+        rotulo: t.codigo,
+        segmentos: [
+          {
+            valor: t.pontosMedia,
+            cor: corPorTurma.get(t.id) ?? "#3b82f6",
+            rotulo: "Pontos médios",
+          },
+        ],
+      })),
+    [dash, corPorTurma]
+  );
+
   const fmt = (iso: string | null) =>
     iso
       ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
@@ -91,7 +106,7 @@ export function PainelTab() {
         <p className="text-textoSec text-sm">Carregando…</p>
       ) : (
         <>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-texto">
               <BarChart3 size={16} className="text-verde" /> Efetivo por turma
@@ -113,6 +128,12 @@ export function PainelTab() {
               unidade="h"
               vazio="Nenhuma guarda fechada ainda — feche guardas para contabilizar horas."
             />
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-texto">
+              <ShieldAlert size={16} className="text-verde" /> Pontos médios por turma
+            </div>
+            <BarChart dados={pontosPorTurma} />
           </Card>
         </div>
 
@@ -137,13 +158,18 @@ export function PainelTab() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   <Stat label="Guardas" value={t.guardas} />
                   <Stat label="Monitores" value={t.monitores} tone="verde" />
                   <Stat
                     label="Ausentes"
                     value={ausentes}
                     tone={ausentes > 0 ? "vermelho" : "verde"}
+                  />
+                  <Stat
+                    label="Pontos méd."
+                    value={t.pontosMedia}
+                    tone={t.pontosMedia < 100 ? "vermelho" : "verde"}
                   />
                 </div>
 

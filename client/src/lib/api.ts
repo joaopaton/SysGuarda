@@ -178,6 +178,23 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ date, turmaId, registros }),
     }),
+  // Classifica uma falta (só instrutor/admin). justificada=true -> -2; false -> -4.
+  justificarFalta: (
+    date: string,
+    turmaId: string | null,
+    num: string,
+    nome: string,
+    justificada: boolean
+  ) =>
+    req<{ ok: boolean; justificada: boolean }>("/api/attendance/justificar", {
+      method: "PATCH",
+      body: JSON.stringify({ date, turmaId, num, nome, justificada }),
+    }),
+  getPontos: (turmaId: string | null) => {
+    const qs = new URLSearchParams();
+    if (turmaId) qs.set("turmaId", turmaId);
+    return req<import("./types").PontosReport>(`/api/attendance/pontos?${qs}`);
+  },
   getHistoricoPresenca: (
     turmaId: string | null,
     from: string,

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireSuperadmin } from "../auth.js";
+import { calcularPontos, PONTOS_INICIAL } from "../domain.js";
 
 export const dashboardRouter = Router();
 
@@ -17,6 +18,24 @@ dashboardRouter.get("/", requireSuperadmin, async (_req, res) => {
     select: { turmaId: true, startDate: true },
   });
 
+  // Faltas (instrução) por pessoa, p/ o saldo de pontos médio da turma.
+  const faltas = await prisma.attendance.findMany({
+    where: { status: "FALTA" },
+    select: { personNum: true, personNome: true, justificada: true },
+  });
+  const faltasPorPessoa = new Map<string, { j: number; nj: number }>();
+  for (const f of faltas) {
+    const k = f.personNum + f.personNome;
+    const acc = faltasPorPessoa.get(k) ?? { j: 0, nj: 0 };
+    if (f.justificada) acc.j++;
+    else acc.nj++;
+    faltasPorPessoa.set(k, acc);
+  }
+  const pontosDe = (num: string, nome: string) => {
+    const a = faltasPorPessoa.get(num + nome);
+    return a ? calcularPontos(a.j, a.nj) : PONTOS_INICIAL;
+  };
+
   // Próxima turma do rodízio (após a turma da escala mais recente).
   let proximaTurmaId: string | null = turmas[0]?.id ?? null;
   if (schedules[0]?.turmaId) {
@@ -29,6 +48,10 @@ dashboardRouter.get("/", requireSuperadmin, async (_req, res) => {
     const guardas = daTurma.filter((p) => !p.isMonitor);
     const monitores = daTurma.filter((p) => p.isMonitor);
     const sch = schedules.filter((s) => s.turmaId === t.id);
+    const saldos = daTurma.map((p) => pontosDe(p.num, p.nome));
+    const pontosMedia = saldos.length
+      ? Math.round(saldos.reduce((a, b) => a + b, 0) / saldos.length)
+      : PONTOS_INICIAL;
     return {
       id: t.id,
       codigo: t.codigo,
@@ -40,6 +63,7 @@ dashboardRouter.get("/", requireSuperadmin, async (_req, res) => {
       monitoresAusentes: monitores.filter((p) => !p.available).length,
       escalas: sch.length,
       ultimaEscala: sch[0]?.startDate ?? null,
+      pontosMedia,
     };
   });
 

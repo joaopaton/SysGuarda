@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:migrar-justificadas": "tsx prisma/migrarJustificadas.ts",
     "db:studio": "prisma studio",
     "prod:schema": "node prisma/genProdSchema.mjs",
     "prod:db": "node prisma/genProdSchema.mjs && prisma generate --schema prisma/schema.production.prisma && prisma db push --schema prisma/schema.production.prisma",

@@ -24,6 +24,7 @@ const ROTULOS: Record<string, string> = {
   "PUT /api/missions/config": "Alterou meta de missões",
   "DELETE /api/missions/:id": "Removeu missão",
   "POST /api/attendance": "Registrou presença",
+  "PATCH /api/attendance/justificar": "Classificou falta",
   "POST /api/people": "Cadastrou militar",
   "PATCH /api/people/:id": "Editou militar",
   "DELETE /api/people/:id": "Removeu militar",
@@ -40,7 +41,7 @@ const ROTULOS: Record<string, string> = {
 // Campos seguros do corpo p/ resumir no detalhe (NUNCA inclui senha/hash).
 const CAMPOS_DETALHE = [
   "username", "nome", "num", "descricao", "startDate",
-  "date", "status", "role", "horas", "metaHoras", "mode",
+  "date", "status", "role", "horas", "metaHoras", "mode", "justificada",
 ];
 
 /** Troca segmentos com cara de id (cuid/numérico) por ":id" e devolve o último id. */
