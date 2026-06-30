@@ -57,7 +57,9 @@ app.post("/api/login", async (req, res) => {
     return res.json({ ok: true });
   }
   const usuario = String(req.body?.usuario ?? "").trim().toLowerCase();
-  const senha = String(req.body?.senha ?? "");
+  // Trim: alinha com a definição da senha (str() apara espaços), evitando que um
+  // espaço acidental do teclado/gerenciador faça a senha correta ser rejeitada.
+  const senha = String(req.body?.senha ?? "").trim();
   const user = await prisma.user.findUnique({ where: { username: usuario } });
   if (user && user.active && verifyPassword(senha, user.passwordHash)) {
     emitirSessao(res, user.id);
@@ -80,8 +82,10 @@ app.post("/api/me/password", async (req, res) => {
   if (!loginAtivo()) {
     return res.status(400).json({ error: "Sem login em modo de desenvolvimento." });
   }
-  const atual = String(req.body?.atual ?? "");
-  const nova = String(req.body?.nova ?? "");
+  // Trim em ambas: a definição da senha apara espaços (str()), então a verificação
+  // precisa aparar também — senão um espaço invisível dá "Senha atual incorreta".
+  const atual = String(req.body?.atual ?? "").trim();
+  const nova = String(req.body?.nova ?? "").trim();
   if (nova.length < 4) {
     return res.status(400).json({ error: "Nova senha com ao menos 4 caracteres." });
   }

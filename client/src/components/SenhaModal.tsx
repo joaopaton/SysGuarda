@@ -15,17 +15,20 @@ export function SenhaModal({ onClose }: { onClose: () => void }) {
 
   const salvar = async () => {
     setErro(null);
-    if (nova.length < 4) {
+    // Apara espaços para casar com o servidor (que também apara ao verificar/gravar).
+    const atualT = atual.trim();
+    const novaT = nova.trim();
+    if (novaT.length < 4) {
       setErro("A nova senha precisa ter ao menos 4 caracteres.");
       return;
     }
-    if (nova !== confirma) {
+    if (novaT !== confirma.trim()) {
       setErro("A confirmação não bate com a nova senha.");
       return;
     }
     setSalvando(true);
     try {
-      await api.trocarMinhaSenha(atual, nova);
+      await api.trocarMinhaSenha(atualT, novaT);
       setOk(true);
       setTimeout(onClose, 1200);
     } catch (e) {
@@ -72,11 +75,23 @@ export function SenhaModal({ onClose }: { onClose: () => void }) {
                   value={atual}
                   onChange={(e) => setAtual(e.target.value)}
                   autoFocus
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="current-password"
                 />
               </div>
               <div>
                 <Label>Nova senha (mín. 4)</Label>
-                <Input type="password" value={nova} onChange={(e) => setNova(e.target.value)} />
+                <Input
+                  type="password"
+                  value={nova}
+                  onChange={(e) => setNova(e.target.value)}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="new-password"
+                />
               </div>
               <div>
                 <Label>Confirmar nova senha</Label>
@@ -85,6 +100,10 @@ export function SenhaModal({ onClose }: { onClose: () => void }) {
                   value={confirma}
                   onChange={(e) => setConfirma(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && salvar()}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="new-password"
                 />
               </div>
             </div>

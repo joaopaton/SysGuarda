@@ -54,6 +54,10 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           autoFocus
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          autoComplete="username"
           className="w-full bg-superficie border border-borda text-texto rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-verde"
         />
 
@@ -62,6 +66,10 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           type="password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          autoComplete="current-password"
           className="w-full bg-superficie border border-borda text-texto rounded-lg px-3 py-2.5 text-sm mb-6 focus:outline-none focus:border-verde"
         />
 
