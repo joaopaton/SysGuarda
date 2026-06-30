@@ -5,9 +5,10 @@ import {
   Printer,
   ChevronDown,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import { api } from "../../lib/api";
-import type { PresencaHistorico, PresencaLinha, AttendanceStatus } from "../../lib/types";
+import type { PresencaHistorico, PresencaLinha } from "../../lib/types";
 import { dataBR } from "../../lib/dates";
 import {
   exportarHistoricoPresencaCSV,
@@ -18,16 +19,15 @@ import { useNav } from "../../state/NavContext";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 
-const COR: Record<AttendanceStatus, string> = {
-  PRESENTE: "bg-verde text-noVerde",
-  FALTA: "bg-vermelho text-white",
-  JUSTIFICADO: "bg-ambar text-white",
-};
-const SIGLA: Record<AttendanceStatus, string> = {
-  PRESENTE: "P",
-  FALTA: "F",
-  JUSTIFICADO: "J",
-};
+/** Cor/sigla de um dia. Falta justificada (J/âmbar) é distinta da falta (F/vermelho). */
+function corDia(d: { status: string; justificada: boolean }): string {
+  if (d.status === "PRESENTE") return "bg-verde text-noVerde";
+  return d.justificada ? "bg-ambar text-white" : "bg-vermelho text-white";
+}
+function siglaDia(d: { status: string; justificada: boolean }): string {
+  if (d.status === "PRESENTE") return "P";
+  return d.justificada ? "J" : "F";
+}
 
 export function HistoricoPresenca() {
   const { isSuper } = useAppData();
@@ -36,6 +36,7 @@ export function HistoricoPresenca() {
   const [to, setTo] = useState("");
   const [rep, setRep] = useState<PresencaHistorico | null>(null);
   const [aberto, setAberto] = useState<Set<string>>(new Set());
+  const [busca, setBusca] = useState("");
 
   const turmaId = isSuper ? turmaFoco || null : null;
 
@@ -51,14 +52,20 @@ export function HistoricoPresenca() {
     carregar();
   }, [carregar]);
 
+  const termo = busca.trim().toLowerCase();
+  const casa = (p: PresencaLinha) =>
+    !termo ||
+    p.nome.toLowerCase().includes(termo) ||
+    p.num.toLowerCase().includes(termo);
+
   const grupos = rep
     ? [
         ...rep.turmas.map((t) => ({
           titulo: `${t.codigo} · ${t.apelido}`,
-          pessoas: t.pessoas,
+          pessoas: t.pessoas.filter(casa),
         })),
         ...(rep.semTurma.length
-          ? [{ titulo: "Sem turma", pessoas: rep.semTurma }]
+          ? [{ titulo: "Sem turma", pessoas: rep.semTurma.filter(casa) }]
           : []),
       ]
     : [];
@@ -88,11 +95,11 @@ export function HistoricoPresenca() {
           >
             {dataBR(d).slice(0, 5)}
             <span
-              className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold ${
-                COR[p.dias[d]]
-              }`}
+              className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold ${corDia(
+                p.dias[d]
+              )}`}
             >
-              {SIGLA[p.dias[d]]}
+              {siglaDia(p.dias[d])}
             </span>
           </span>
         ))}
@@ -123,7 +130,20 @@ export function HistoricoPresenca() {
             />
           </label>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-end gap-2 flex-wrap">
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-textoTen pointer-events-none"
+            />
+            <input
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nº ou nome…"
+              className="w-full sm:w-56 bg-superficie border border-borda text-texto rounded-lg pl-9 pr-3 py-2 text-sm placeholder:text-textoTen"
+            />
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -143,7 +163,9 @@ export function HistoricoPresenca() {
 
       {totalPessoas === 0 ? (
         <EmptyState icon={<ClipboardList size={40} />}>
-          Nenhuma chamada registrada no período. Faça a chamada na aba Presença.
+          {termo
+            ? `Nenhum militar encontrado para “${busca.trim()}”.`
+            : "Nenhuma chamada registrada no período. Faça a chamada na aba Presença."}
         </EmptyState>
       ) : (
         <div className="flex flex-col gap-6">
@@ -183,10 +205,20 @@ export function HistoricoPresenca() {
                               {p.isMonitor ? " · monitor" : ""}
                             </span>
                           </span>
-                          <span className="flex gap-1.5 shrink-0 text-xs font-medium">
+                          <span className="flex items-center gap-1.5 shrink-0 text-xs font-medium">
                             <span className="text-verdeTexto">{p.presentes}P</span>
-                            <span className="text-vermelho">{p.faltas}F</span>
-                            <span className="text-ambar">{p.justificados}J</span>
+                            <span className="text-vermelho">{p.faltasNaoJustificadas}F</span>
+                            <span className="text-ambar">{p.faltasJustificadas}J</span>
+                            <span
+                              className={`ml-1 rounded-md px-1.5 py-0.5 font-mono ${
+                                p.pontos < 100
+                                  ? "bg-vermelho/15 text-vermelho"
+                                  : "bg-cartaoAlt text-textoSec"
+                              }`}
+                              title="Saldo de pontos"
+                            >
+                              {p.pontos} pts
+                            </span>
                           </span>
                         </button>
                         {exp && detalhe(p)}

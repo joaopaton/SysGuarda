@@ -178,11 +178,13 @@ model AuditLog {
 }
 
 /// Presença na instrução da manhã (independente da guarda). 1 registro por pessoa/dia.
-/// status: "PRESENTE" | "FALTA" | "JUSTIFICADO". Identidade por (num, nome).
+/// status: "PRESENTE" | "FALTA". A FALTA tem `justificada` (false = -4 pts, true = -2 pts),
+/// classificada só por instrutor/admin. Identidade por (num, nome).
 model Attendance {
   id         String   @id @default(cuid())
   date       DateTime // dia da instrução, normalizado 00:00
-  status     String   @default("PRESENTE")
+  status     String   @default("PRESENTE") // "PRESENTE" | "FALTA"
+  justificada Boolean @default(false) // só vale p/ FALTA: true = -2 pts, false = -4 pts
   createdAt  DateTime @default(now())
 
   turmaId String?

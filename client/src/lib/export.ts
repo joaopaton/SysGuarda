@@ -192,6 +192,13 @@ interface PresencaLinha {
   nome: string;
   isMonitor: boolean;
   status: string;
+  justificada?: boolean;
+}
+
+/** Rótulo do status p/ exportação: distingue falta justificada. */
+function statusLabel(p: PresencaLinha): string {
+  if (p.status !== "FALTA") return p.status;
+  return p.justificada ? "FALTA (JUST.)" : "FALTA";
 }
 
 function imprimir(html: string) {
@@ -231,7 +238,7 @@ export function exportarPresencaPDF(
       (p, i) =>
         `<tr><td class="c">${i + 1}</td><td class="nome"><b>${p.num}</b> ${p.nome}${
           p.isMonitor ? ' <span class="mon">(mon)</span>' : ""
-        }</td><td class="c">${p.status}</td><td></td></tr>`
+        }</td><td class="c">${statusLabel(p)}</td><td></td></tr>`
     )
     .join("");
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -264,7 +271,7 @@ export function exportarPresencaCSV(
   const out = [`LISTA DE PRESENÇA${sep}${turmaLabel}${sep}${dataLabel}`, ""];
   out.push(["Nº", "NOME", "MONITOR", "STATUS"].join(sep));
   for (const p of linhas)
-    out.push([p.num, p.nome, p.isMonitor ? "SIM" : "", p.status].join(sep));
+    out.push([p.num, p.nome, p.isMonitor ? "SIM" : "", statusLabel(p)].join(sep));
   baixar("lista_presenca.csv", "﻿" + out.join("\n"), "text/csv;charset=utf-8");
 }
 
@@ -276,7 +283,9 @@ interface HistPessoaExport {
   isMonitor: boolean;
   presentes: number;
   faltas: number;
-  justificados: number;
+  faltasJustificadas: number;
+  faltasNaoJustificadas: number;
+  pontos: number;
 }
 
 /** Histórico de presença (totais por pessoa) em CSV. */
@@ -289,16 +298,19 @@ export function exportarHistoricoPresencaCSV(
   for (const g of grupos) {
     if (g.pessoas.length === 0) continue;
     out.push(g.titulo);
-    out.push(["Nº", "NOME", "PRESENÇAS", "FALTAS", "JUSTIFICADOS", "DIAS"].join(sep));
+    out.push(
+      ["Nº", "NOME", "PRESENÇAS", "FALTAS", "F. JUSTIF.", "DIAS", "PONTOS"].join(sep)
+    );
     for (const p of g.pessoas)
       out.push(
         [
           p.num,
           p.nome,
           p.presentes,
-          p.faltas,
-          p.justificados,
-          p.presentes + p.faltas + p.justificados,
+          p.faltasNaoJustificadas,
+          p.faltasJustificadas,
+          p.presentes + p.faltas,
+          p.pontos,
         ].join(sep)
       );
     out.push("");
@@ -319,13 +331,13 @@ export function exportarHistoricoPresencaPDF(
           (p) =>
             `<tr><td class="nome"><b>${p.num}</b> ${p.nome}${
               p.isMonitor ? ' <span class="mon">(mon)</span>' : ""
-            }</td><td class="c">${p.presentes}</td><td class="c">${p.faltas}</td><td class="c">${p.justificados}</td><td class="c tot">${
-              p.presentes + p.faltas + p.justificados
-            }</td></tr>`
+            }</td><td class="c">${p.presentes}</td><td class="c">${p.faltasNaoJustificadas}</td><td class="c">${p.faltasJustificadas}</td><td class="c">${
+              p.presentes + p.faltas
+            }</td><td class="c tot">${p.pontos}</td></tr>`
         )
         .join("");
       return `<h2>${g.titulo}</h2>
-      <table><thead><tr><th class="hnome">MILITAR</th><th>P</th><th>F</th><th>J</th><th>DIAS</th></tr></thead>
+      <table><thead><tr><th class="hnome">MILITAR</th><th>P</th><th>F</th><th>J</th><th>DIAS</th><th>PONTOS</th></tr></thead>
       <tbody>${linhas}</tbody></table>`;
     })
     .join("");
@@ -342,7 +354,7 @@ export function exportarHistoricoPresencaPDF(
   <div style="display:flex;align-items:center;gap:10px;border-bottom:3px solid #3a4220;padding-bottom:8px;margin-bottom:6px;">
     <span style="font-size:22px">★</span><div><h1>HISTÓRICO DE PRESENÇA · TG 05-003</h1></div>
   </div>
-  <div class="sub">PERÍODO: ${periodoLabel} &nbsp;·&nbsp; P=presente · F=falta · J=justificado</div>
+  <div class="sub">PERÍODO: ${periodoLabel} &nbsp;·&nbsp; P=presente · F=falta · J=falta justificada · PONTOS=saldo (120 − 4×F − 2×J)</div>
   ${tabelas}
   <div class="foot">▬▬▬ Emitido em ${new Date().toLocaleDateString("pt-BR")} ▬▬▬</div>
   </body></html>`;

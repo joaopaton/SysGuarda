@@ -22,6 +22,11 @@ export function isSuperadmin(req: Request): boolean {
   return req.user?.role === "superadmin";
 }
 
+/** Pode classificar falta como justificada? Só instrutor e Comandante (monitor não). */
+export function podeClassificar(req: Request): boolean {
+  return req.user?.role === "superadmin" || req.user?.role === "instrutor";
+}
+
 /**
  * Filtro de turma para consultas Prisma:
  *  - superadmin: {} (vê tudo)
